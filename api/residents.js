@@ -1,0 +1,95 @@
+// Live orbit data: residents.json (followers from the Instagram export) + points for activity,
+// read once in a while from the official Instagram API and cached by Vercel.
+// The token lives only in the Vercel environment variable IG_TOKEN and never leaves the server.
+const fs = require('fs');
+const path = require('path');
+
+const API = 'https://graph.instagram.com/v26.0';
+const COMMENT_PTS = 3, COMMENT_DAY_CAP = 15, FRIEND_PTS = 20, MIN_WORDS = 3;
+const TZ_OFFSET_MS = 3 * 3600e3; // days are counted by Moscow time
+
+async function get(url) {
+  const r = await fetch(url);
+  const j = await r.json();
+  if (!r.ok || j.error) throw new Error((j.error && j.error.message) || 'HTTP ' + r.status);
+  return j;
+}
+async function all(url) {
+  const out = [];
+  let next = url, guard = 0;
+  while (next && guard++ < 40) { const j = await get(next); out.push(...(j.data || [])); next = j.paging && j.paging.next; }
+  return out;
+}
+
+const words = t => (t || '').split(/\s+/).filter(w => !w.startsWith('@') && /[\p{L}\p{N}]/u.test(w)).length;
+const norm = t => (t || '').toLowerCase().replace(/@[\w.]+/g, '').replace(/[^\p{L}\p{N}]+/gu, '');
+const mentions = t => [...(t || '').matchAll(/@([A-Za-z0-9._]{1,30})/g)].map(m => m[1].replace(/\.$/, '').toLowerCase());
+const day = ms => new Date(ms + TZ_OFFSET_MS).toISOString().slice(0, 10);
+
+async function collectComments(token, since) {
+  const media = await all(`${API}/me/media?fields=id,timestamp&limit=50&access_token=${token}`);
+  const list = [];
+  for (const m of media) {
+    if (Date.parse(m.timestamp) < since) continue;
+    const cs = await all(`${API}/${m.id}/comments?fields=id,text,timestamp,username,replies{id,text,timestamp,username}&limit=50&access_token=${token}`);
+    for (const c of cs) {
+      list.push(c);
+      for (const r of (c.replies && c.replies.data) || []) list.push(r);
+    }
+  }
+  return list.map(c => ({ u: (c.username || '').toLowerCase(), text: c.text || '', ts: Date.parse(c.timestamp) }))
+             .filter(c => c.u && c.ts).sort((a, b) => a.ts - b.ts);
+}
+
+function score(data, comments) {
+  const acc = (data.account || '').toLowerCase();
+  const subs = new Map((data.subscribers || []).map(s => [s.nick.toLowerCase(), s]));
+  const bonus = new Map(), stat = new Map();
+  const add = (u, k, v) => { bonus.set(u, (bonus.get(u) || 0) + v); const s = stat.get(u) || { comments: 0, friends: 0 }; s[k] += v; stat.set(u, s); };
+  const seenText = new Set(), dayPts = new Map(), invited = new Set();
+  for (const c of comments) {
+    if (c.u === acc) continue;
+    // comment points: 3+ words, no repeats of the same text by the same person, at most 15 points a day
+    const key = c.u + '|' + norm(c.text), dk = c.u + '|' + day(c.ts);
+    if (words(c.text) >= MIN_WORDS && norm(c.text) && !seenText.has(key) && (dayPts.get(dk) || 0) < COMMENT_DAY_CAP) {
+      seenText.add(key); dayPts.set(dk, (dayPts.get(dk) || 0) + COMMENT_PTS); add(c.u, 'comments', COMMENT_PTS);
+    }
+    // friend points: the tagged friend follows now and followed only after this comment; first tagger wins
+    if (!subs.has(c.u)) continue;
+    for (const b of mentions(c.text)) {
+      if (b === c.u || b === acc || invited.has(b)) continue;
+      const f = subs.get(b);
+      if (!f || !f.since || f.since * 1000 <= c.ts) continue;
+      invited.add(b); add(c.u, 'friends', FRIEND_PTS);
+    }
+  }
+  data.subscribers = (data.subscribers || []).map(s => {
+    const u = s.nick.toLowerCase(), b = bonus.get(u) || 0, st = stat.get(u);
+    const o = { nick: s.nick, points: (s.points || 0) + b };
+    if (s.leftAt) o.leftAt = s.leftAt;
+    if (st) o.activity = st;
+    return o;
+  });
+  return { counted: comments.length, people: stat.size, invites: invited.size };
+}
+
+module.exports = async (req, res) => {
+  const data = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'residents.json'), 'utf8'));
+  const token = process.env.IG_TOKEN;
+  let info = { live: false };
+  try {
+    if (token && data.countFrom) {
+      const comments = await collectComments(token, Date.parse(data.countFrom));
+      info = { live: true, ...score(data, comments) };
+    }
+  } catch (e) {
+    console.error('instagram api:', e.message);
+    info = { live: false, error: 'instagram api unavailable' };
+  }
+  for (const s of data.subscribers || []) delete s.since;
+  data.updated = new Date().toISOString();
+  data.info = info;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, s-maxage=21600, stale-while-revalidate=86400');
+  res.status(200).send(JSON.stringify(data));
+};

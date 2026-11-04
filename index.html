@@ -244,8 +244,8 @@ let maxR=950;
 /* Layout: every subscriber gets its own slot. Levels sit in rings from the inside out (stars first, asteroids last);
    inside a level the most active are closest. Ring gap and slot spacing are sized so neighbours never overlap, even on the tilted view. */
 function build(list){
-  const base=list.map(({nick,points,leftAt})=>{const r=rng(hash(nick)),lvl=lvlOf(points),L=LEVELS[lvl],R=roll(nick);if(FORCE.has(nick))R.fx=FX[FORCE.get(nick)];
-    return{nick,points,leftAt:leftAt||'',lvl,size:L.size[0]+r()*(L.size[1]-L.size[0]),hue:Math.floor(r()*360),seed:r(),sd:hash(nick)^0x9e3779b9,ph:r(),r:0,w:0,a0:0,x:0,y:0,sx:0,sy:0,s:0,fx:R.fx,cm:R.cm,rgb:R.rgb,rgb2:R.rgb2,col:0,lc:null,verts:null,craters:null,rc:0,ac:0,mv:false}});
+  const base=list.map(({nick,points,leftAt,activity})=>{const r=rng(hash(nick)),lvl=lvlOf(points),L=LEVELS[lvl],R=roll(nick);if(FORCE.has(nick))R.fx=FX[FORCE.get(nick)];
+    return{nick,points,leftAt:leftAt||'',activity:activity||null,lvl,size:L.size[0]+r()*(L.size[1]-L.size[0]),hue:Math.floor(r()*360),seed:r(),sd:hash(nick)^0x9e3779b9,ph:r(),r:0,w:0,a0:0,x:0,y:0,sx:0,sy:0,s:0,fx:R.fx,cm:R.cm,rgb:R.rgb,rgb2:R.rgb2,col:0,lc:null,verts:null,craters:null,rc:0,ac:0,mv:false}});
   const prev=new Map();for(const o of objects)prev.set(o.nick,o);const first=!objects.length;
   const groups=LEVELS.map(()=>[]);for(const o of base)groups[o.lvl].push(o);
   let rad=790;objects=[];
@@ -589,6 +589,7 @@ function renderLevels(){const counts=LEVELS.map(()=>0);objects.forEach(o=>counts
 }
 const hex=A=>'#'+A.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
 function metaHTML(o){let h='';
+  if(o.activity){const a=o.activity,p=[];if(a.comments)p.push(`комментарии <b>+${a.comments}</b>`);if(a.friends)p.push(`друзья <b>+${a.friends}</b>`);if(p.length)h+=`<div>За активность: ${p.join(' · ')}</div>`}
   if(o.leftAt){const d=Math.max(0,LEAVE_DAYS-Math.floor((Date.now()-Date.parse(o.leftAt))/864e5));h+=`<div class="lock">Отписался · исчезнет с орбиты через ${d} дн., если не вернётся</div>`}
   if(o.lvl>=3){const m=CMODES[o.cm];h+=`<div><i class="sw" style="background:${hex(o.rgb)}"></i>Цвет <b>${hex(o.rgb)}</b> · <span style="color:${TIERS[m.tier].color}">${m.name}</span> · ${pct(m.p)}</div>`}
   else h+=`<div class="lock">Цвет откроется на уровне «${LEVELS[3].name}»</div>`;
@@ -626,7 +627,7 @@ function parse(data){
     if(it&&it.string_list_data){const d=it.string_list_data[0]||{};nick=d.value;const months=d.timestamp?Math.max(0,(now-d.timestamp)/2629800):0;points=5+Math.floor(months)*10}
     else if(it&&(it.nick||it.username)){nick=it.nick||it.username;points=Math.max(0,Math.round(+it.points||0))}
     else if(typeof it==='string'){nick=it;points=5}
-    if(nick&&!seen.has(nick)){seen.add(nick);const o={nick:String(nick).replace(/^@/,''),points};if(it&&it.leftAt)o.leftAt=String(it.leftAt);out.push(o)}}
+    if(nick&&!seen.has(nick)){seen.add(nick);const o={nick:String(nick).replace(/^@/,''),points};if(it&&it.leftAt)o.leftAt=String(it.leftAt);if(it&&it.activity)o.activity=it.activity;out.push(o)}}
   if(!out.length&&!(data&&data.ads))throw new Error('Не нашёл ни одного ника');return out;
 }
 
@@ -683,7 +684,7 @@ function frame(now){
   requestAnimationFrame(frame)}
 build([]);requestAnimationFrame(frame);
 /* the site reads residents.json from next to itself; without it the orbit simply starts empty */
-(async()=>{try{const r=await fetch('residents.json',{cache:'no-store'});if(!r.ok)return;DATA=parse(await r.json());build(DATA);home()}catch(e){}})();
+(async()=>{for(const u of ['api/residents','residents.json']){try{const r=await fetch(u,{cache:'no-store'});if(!r.ok)continue;DATA=parse(await r.json());build(DATA);home();return}catch(e){}}})();
 })();
 </script>
 
