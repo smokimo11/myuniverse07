@@ -4,7 +4,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const API = 'https://graph.instagram.com/v26.0';
+// Two kinds of keys work: a system user token from the business portfolio (needs IG_USER_ID, graph.facebook.com)
+// or an Instagram login token (graph.instagram.com, /me).
+const VER = 'v26.0';
 const COMMENT_PTS = 3, COMMENT_DAY_CAP = 15, FRIEND_PTS = 20, MIN_WORDS = 3;
 const TZ_OFFSET_MS = 3 * 3600e3; // days are counted by Moscow time
 
@@ -27,7 +29,9 @@ const mentions = t => [...(t || '').matchAll(/@([A-Za-z0-9._]{1,30})/g)].map(m =
 const day = ms => new Date(ms + TZ_OFFSET_MS).toISOString().slice(0, 10);
 
 async function collectComments(token, since) {
-  const media = await all(`${API}/me/media?fields=id,timestamp&limit=50&access_token=${token}`);
+  const igId = process.env.IG_USER_ID;
+  const API = igId ? `https://graph.facebook.com/${VER}` : `https://graph.instagram.com/${VER}`;
+  const media = await all(`${API}/${igId || 'me'}/media?fields=id,timestamp&limit=50&access_token=${token}`);
   const list = [];
   for (const m of media) {
     if (Date.parse(m.timestamp) < since) continue;
