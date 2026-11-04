@@ -148,7 +148,7 @@ pre{font-family:var(--f-mono);font-size:12px;background:var(--void);border:1px s
 
 <div class="top">
   <div class="brand panel">
-    <h1 id="title">@our_universe.o</h1>
+    <h1 id="title">@what_if.mir</h1>
     <p>Жителей: <b id="count">0</b> · обновление каждый день </p>
   </div>
   <div class="actions">
@@ -200,7 +200,7 @@ pre{font-family:var(--f-mono);font-size:12px;background:var(--void);border:1px s
       <li>Отметка в сторис засчитывается раз в день.</li>
       <li>Очки навсегда привязаны к нику. Повторная подписка новых очков не даёт.</li>
       <li>Кто отписался, исчезает с орбиты через 10 дней. Вернёшься, и твои очки вернутся вместе с тобой.</li>
-      <li>Победителей челленджей выбирает @our_universe.o.</li>
+      <li>Победителей челленджей выбирает @what_if.mir.</li>
     </ul>
     <h3>Цвета · с уровня «Планета»</h3>
     <p>Каждому выпадает один из 16 777 216 цветов RGB и режим окраски. Цвет закреплён за ником.</p>
@@ -239,7 +239,7 @@ function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i)
 function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const lvlOf=p=>{let l=0;for(let i=0;i<LEVELS.length;i++)if(p>=LEVELS[i].min)l=i;return l};
 
-const LEAVE_DAYS=10;let LEFT=[],objects=[],DATA=[],account='our_universe.o',isDemo=false;const FORCE=new Map(),frameHooks=[];
+const LEAVE_DAYS=10;let LEFT=[],objects=[],DATA=[],account='what_if.mir',isDemo=false;const FORCE=new Map(),frameHooks=[];
 let maxR=950;
 /* Layout: every subscriber gets its own slot. Levels sit in rings from the inside out (stars first, asteroids last);
    inside a level the most active are closest. Ring gap and slot spacing are sized so neighbours never overlap, even on the tilted view. */
