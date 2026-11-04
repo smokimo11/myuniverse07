@@ -239,7 +239,7 @@ function build(list){
   for(let l=LEVELS.length-1;l>=0;l--){
     const grp=groups[l].sort((a,b)=>b.points-a.points||(a.nick<b.nick?-1:1)),L=LEVELS[l];
     if(!grp.length){L.band=[0,0];continue}
-    const d=L.size[1]*2*(l===1?1.5:1.18),dr=d/TILT;rad+=dr/2;L.band=[rad,rad];
+    const d=L.size[1]*2*(l===1?1.9:1.75),dr=d/TILT;rad+=dr/2;L.band=[rad,rad];
     let i=0,ring=0;
     while(i<grp.length){const cap=Math.max(6,Math.floor(2*Math.PI*rad*TILT/d)),n=Math.min(cap,grp.length-i),w=520/Math.pow(rad,1.5),a0=(ring*2.399+l)%(Math.PI*2);
       for(let k=0;k<n;k++){const o=grp[i+k];o.r=rad;o.w=w;o.a0=a0+(k+(o.ph-.5)*.25)/n*Math.PI*2}
@@ -647,14 +647,18 @@ function frame(now){
   for(const o of objects){if(!doDots&&!o.mv&&o.size*z<2.2&&o.lvl<6&&o!==sel)continue;o.sx=cx+(o.x-cam.x)*z;o.sy=cy+(o.y-cam.y)*z;o.s=o.size*z;const m=o.s*(o.lvl===1?8:o.lvl===6?3.3:2.1)+4;
     if(o.sx<-m||o.sx>W+m||o.sy<-m||o.sy>H+m)continue;
     if(o.s<2.2&&o.lvl<6&&o!==sel){dot(o);continue}
-    if(o.s<10&&o.lvl!==1&&o.lvl<5&&(o.lvl<3||o.cm===0||o.cm===2)&&o!==sel){const sp=sprite(o),k=o.s/(o.lvl===4?12:20)*64;ctx.drawImage(sp,o.sx-k/2,o.sy-k/2,k,k);if(o.s>=6&&labels.length<160)labels.push(o);continue}
+    if(o.s<10&&o.lvl!==1&&o.lvl<5&&(o.lvl<3||o.cm===0||o.cm===2)&&o!==sel){const sp=sprite(o),k=o.s/(o.lvl===4?12:20)*64;ctx.drawImage(sp,o.sx-k/2,o.sy-k/2,k,k);if(o.s>=10&&labels.length<400)labels.push(o);continue}
     let lx=-o.x,ly=-o.y;const ln=Math.hypot(lx,ly)||1;lx/=ln;ly/=ln;
     const fxOn=o.lvl===6&&o.s>=3;if(fxOn)drawFx(ctx,o.fx,o,o.sx,o.sy,o.s,t,lx,ly,1);
     drawBody(ctx,o,o.sx,o.sy,o.s,lx,ly);
     if(fxOn)drawFx(ctx,o.fx,o,o.sx,o.sy,o.s,t,lx,ly,0);
-    if(o===sel||(o.s>=6&&labels.length<160))labels.push(o)}
+    if(o.s>=10&&labels.length<400)labels.push(o)}
   flushDots(doDots);pcam.x=cam.x;pcam.y=cam.y;pcam.z=cam.z;
-  ctx.textAlign='center';ctx.textBaseline='top';
+  ctx.textAlign='center';ctx.textBaseline='top';ctx.lineJoin='round';
+  /* nick under each object, sized to the object and to the free slot beside it, so it never runs into a neighbour */
+  for(const o of labels){const f=Math.min(14,o.s*.5,3.2*o.s/(.56*o.nick.length));if(f<5)continue;
+    ctx.font=`600 ${f}px "Golos Text",system-ui,sans-serif`;const ty=o.sy+o.s*1.2+2;ctx.lineWidth=f*.32;ctx.strokeStyle='rgba(6,7,13,.85)';ctx.strokeText(o.nick,o.sx,ty);
+    ctx.fillStyle=o===sel?'#e6e9ff':'rgba(235,232,244,.9)';ctx.fillText(o.nick,o.sx,ty)}
   if(sel){const R=Math.max(sel.s*(sel.lvl===4?2.3:1.6),12);ctx.strokeStyle='rgba(230,233,255,.9)';ctx.lineWidth=1.5;ctx.setLineDash([4,5]);ctx.lineDashOffset=-t*12;ctx.beginPath();ctx.arc(sel.sx,sel.sy,R,0,7);ctx.stroke();ctx.setLineDash([])}
   {const R=SUN_R*z,f=Math.min(30,R*.8),ly=sunY+R*1.45;
   ctx.font=`600 ${f}px "Golos Text",system-ui,sans-serif`;ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=f*.5;ctx.fillStyle='rgba(240,242,255,.95)';ctx.fillText('@'+account,sunX,ly);ctx.shadowBlur=0}
