@@ -107,6 +107,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--sun);outline-of
 textarea#jsonOut{width:100%;height:120px;margin-top:10px;background:var(--void);border:1px solid var(--line);border-radius:10px;color:var(--fg);font-family:var(--f-mono);font-size:11px;padding:8px}
 .fair{margin:0;padding:0 0 0 18px;display:flex;flex-direction:column;gap:7px;font-size:13.5px;line-height:1.45;color:var(--muted);max-width:62ch}
 .fair li::marker{color:var(--sun)}
+.sheet p b{color:var(--fg);font-weight:600}
 .prog small b{color:var(--fg);font-weight:600}
 
 .sheet-wrap{position:fixed;inset:0;background:rgba(3,3,8,.6);display:flex;align-items:flex-end;justify-content:center;z-index:20}
@@ -148,7 +149,7 @@ pre{font-family:var(--f-mono);font-size:12px;background:var(--void);border:1px s
 <div class="top">
   <div class="brand panel">
     <h1 id="title">@our_universe.o</h1>
-    <p>Жителей: <b id="count">0</b> </p>
+    <p>Жителей: <b id="count">0</b> · обновление каждый день </p>
   </div>
   <div class="actions">
     <button class="chip panel" id="openLevels">Уровни</button>
@@ -187,6 +188,7 @@ pre{font-family:var(--f-mono);font-size:12px;background:var(--void);border:1px s
   <div class="sheet panel" role="dialog" aria-label="Уровни">
     <header><h2>Как растут объекты</h2><button class="x" data-close aria-label="Закрыть">×</button></header>
     <p>Каждый новый подписчик появляется в поясе астероидов. Активность приносит очки, и объект растёт, переходя на орбиту ближе к чёрной дыре. Ближе всех к дыре кружат 12 титанов.</p>
+    <p><b>Орбита обновляется каждый день:</b> появляются новые подписчики, начисляются очки, объекты растут и переезжают на новые орбиты.</p>
     <h3>Уровни</h3>
     <ul class="levels" id="levelList"></ul>
     <h3>За что даются очки</h3>
