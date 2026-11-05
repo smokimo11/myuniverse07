@@ -69,8 +69,10 @@ function score(data, comments) {
   const acc = (data.account || '').toLowerCase();
   const subs = new Map((data.subscribers || []).map(s => [s.nick.toLowerCase(), s]));
   const bonus = new Map(), stat = new Map();
-  const add = (u, k, v) => { bonus.set(u, (bonus.get(u) || 0) + v); const s = stat.get(u) || { comments: 0, friends: 0 }; s[k] += v; stat.set(u, s); };
+  const add = (u, k, v) => { bonus.set(u, (bonus.get(u) || 0) + v); const s = stat.get(u) || { comments: 0, friends: 0, pending: 0 }; s[k] += v; stat.set(u, s); };
   const seenText = new Set(), dayPts = new Map(), invited = new Set();
+  // the newest follow time in the export tells how fresh the export is
+  const exportedAt = Math.max(0, ...(data.subscribers || []).map(s => (s.since || 0) * 1000));
   for (const c of comments) {
     if (c.u === acc) continue;
     // comment points: a meaningful comment (see realWord), no repeats of the same text by the same person, at most 15 points a day
@@ -78,13 +80,22 @@ function score(data, comments) {
     if (meaningful(c.text) && norm(c.text) && !seenText.has(key) && (dayPts.get(dk) || 0) < COMMENT_DAY_CAP) {
       seenText.add(key); dayPts.set(dk, (dayPts.get(dk) || 0) + COMMENT_PTS); add(c.u, 'comments', COMMENT_PTS);
     }
-    // friend points: the tagged friend follows now and followed only after this comment; first tagger wins
+    // friend points, first tagger wins, one friend counts once:
+    //  confirmed - the friend is in the follower export and followed after this comment;
+    //  pending   - the friend is not in the export yet, but commented after being tagged and no export
+    //              has been taken since the tag; the next export confirms the points or drops them.
     if (!subs.has(c.u)) continue;
     for (const b of mentions(c.text)) {
       if (b === c.u || b === acc || invited.has(b)) continue;
       const f = subs.get(b);
-      if (!f || !f.since || f.since * 1000 <= c.ts) continue;
-      invited.add(b); add(c.u, 'friends', FRIEND_PTS);
+      if (f && f.since) {
+        invited.add(b);
+        if (f.since * 1000 > c.ts) add(c.u, 'friends', FRIEND_PTS);
+        continue;
+      }
+      if (c.ts <= exportedAt) continue;
+      if (!comments.some(x => x.u === b && x.ts > c.ts)) continue;
+      invited.add(b); add(c.u, 'pending', FRIEND_PTS);
     }
   }
   data.subscribers = (data.subscribers || []).map(s => {
@@ -94,7 +105,8 @@ function score(data, comments) {
     if (st) o.activity = st;
     return o;
   });
-  return { counted: comments.length, people: stat.size, invites: invited.size };
+  let pend = 0, conf = 0; for (const v of stat.values()) { pend += v.pending / FRIEND_PTS; conf += v.friends / FRIEND_PTS; }
+  return { counted: comments.length, people: stat.size, invites: conf, pending: pend };
 }
 
 module.exports = async (req, res) => {
