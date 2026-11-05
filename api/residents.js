@@ -29,8 +29,16 @@ const mentions = t => [...(t || '').matchAll(/@([A-Za-z0-9._]{1,30})/g)].map(m =
 const day = ms => new Date(ms + TZ_OFFSET_MS).toISOString().slice(0, 10);
 
 async function collectComments(token, since) {
-  const igId = process.env.IG_USER_ID;
-  const API = igId ? `https://graph.facebook.com/${VER}` : `https://graph.instagram.com/${VER}`;
+  // Facebook-type keys start with "EAA" and talk to graph.facebook.com; Instagram keys ("IGAA…") to graph.instagram.com
+  const fb = token.startsWith('EAA');
+  const API = fb ? `https://graph.facebook.com/${VER}` : `https://graph.instagram.com/${VER}`;
+  let igId = process.env.IG_USER_ID;
+  if (fb && !igId) {
+    const pages = await all(`${API}/me/accounts?fields=instagram_business_account&access_token=${token}`);
+    const p = pages.find(x => x.instagram_business_account);
+    if (!p) throw new Error('IG_USER_ID is not set and no Instagram account found');
+    igId = p.instagram_business_account.id;
+  }
   const media = await all(`${API}/${igId || 'me'}/media?fields=id,timestamp&limit=50&access_token=${token}`);
   const list = [];
   for (const m of media) {
