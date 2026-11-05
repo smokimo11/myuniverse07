@@ -7,7 +7,7 @@ const path = require('path');
 // Two kinds of keys work: a system user token from the business portfolio (needs IG_USER_ID, graph.facebook.com)
 // or an Instagram login token (graph.instagram.com, /me).
 const VER = 'v26.0';
-const COMMENT_PTS = 3, COMMENT_DAY_CAP = 15, FRIEND_PTS = 20, MIN_WORDS = 3;
+const COMMENT_PTS = 3, COMMENT_DAY_CAP = 15, FRIEND_PTS = 20, MIN_LETTERS = 4;
 const TZ_OFFSET_MS = 3 * 3600e3; // days are counted by Moscow time
 
 async function get(url) {
@@ -23,7 +23,19 @@ async function all(url) {
   return out;
 }
 
-const words = t => (t || '').split(/\s+/).filter(w => !w.startsWith('@') && /[\p{L}\p{N}]/u.test(w)).length;
+// A comment counts if it has at least one real-looking word: 4+ letters after squeezing stretched letters
+// ("суперррр" -> "супер"), with vowels, not one letter repeated and not a keyboard mash.
+const VOW = /[аеёиоуыэюяaeiouy]/i;
+const ROWS = ['йцукенгшщзхъ', 'фывапролджэ', 'ячсмитьбю', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+function realWord(w) {
+  if (w.startsWith('@') || w.startsWith('#')) return false;
+  const x = w.toLowerCase().replace(/[^\p{L}]/gu, '').replace(/(\p{L})\1{2,}/gu, '$1');
+  if (x.length < MIN_LETTERS || new Set(x).size < 3) return false;
+  const v = [...x].filter(ch => VOW.test(ch)).length / x.length;
+  if (ROWS.some(r => { for (let i = 0; i + 4 <= r.length; i++) if (x.includes(r.slice(i, i + 4))) return true; return false; })) return false;
+  return v >= 0.2 && v <= 0.8 && !/[^аеёиоуыэюяaeiouy\s]{5,}/i.test(x);
+}
+const meaningful = t => (t || '').split(/\s+/).some(realWord);
 const norm = t => (t || '').toLowerCase().replace(/@[\w.]+/g, '').replace(/[^\p{L}\p{N}]+/gu, '');
 const mentions = t => [...(t || '').matchAll(/@([A-Za-z0-9._]{1,30})/g)].map(m => m[1].replace(/\.$/, '').toLowerCase());
 const day = ms => new Date(ms + TZ_OFFSET_MS).toISOString().slice(0, 10);
@@ -61,9 +73,9 @@ function score(data, comments) {
   const seenText = new Set(), dayPts = new Map(), invited = new Set();
   for (const c of comments) {
     if (c.u === acc) continue;
-    // comment points: 3+ words, no repeats of the same text by the same person, at most 15 points a day
+    // comment points: a meaningful comment (see realWord), no repeats of the same text by the same person, at most 15 points a day
     const key = c.u + '|' + norm(c.text), dk = c.u + '|' + day(c.ts);
-    if (words(c.text) >= MIN_WORDS && norm(c.text) && !seenText.has(key) && (dayPts.get(dk) || 0) < COMMENT_DAY_CAP) {
+    if (meaningful(c.text) && norm(c.text) && !seenText.has(key) && (dayPts.get(dk) || 0) < COMMENT_DAY_CAP) {
       seenText.add(key); dayPts.set(dk, (dayPts.get(dk) || 0) + COMMENT_PTS); add(c.u, 'comments', COMMENT_PTS);
     }
     // friend points: the tagged friend follows now and followed only after this comment; first tagger wins
