@@ -13,7 +13,7 @@ const TZ_OFFSET_MS = 3 * 3600e3; // days are counted by Moscow time
 async function get(url) {
   const r = await fetch(url);
   const j = await r.json();
-  if (!r.ok || j.error) throw new Error((j.error && j.error.message) || 'HTTP ' + r.status);
+  if (!r.ok || j.error) throw new Error(j.error ? `${j.error.type || ''} ${j.error.code || ''}/${j.error.error_subcode || ''}: ${j.error.message}` : 'HTTP ' + r.status);
   return j;
 }
 async function all(url) {
@@ -125,7 +125,7 @@ module.exports = async (req, res) => {
     }
   } catch (e) {
     console.error('instagram api:', e.message);
-    info = { live: false, error: 'instagram api unavailable' };
+    info = { live: false, error: String(e.message || e).replace(/access_token=[^&\s]+/g, 'access_token=…').slice(0, 300) };
   }
   if (!info.live) data.subscribers = (data.subscribers || []).map(s => { const o = { nick: s.nick, points: subPoints(s) }; if (s.leftAt) o.leftAt = s.leftAt; return o; });
   for (const s of data.subscribers || []) { delete s.since; delete s.bonus; }
