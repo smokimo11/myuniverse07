@@ -197,10 +197,9 @@ pre{font-family:var(--f-mono);font-size:12px;background:var(--void);border:1px s
     <ul class="fair">
       <li>Комментарий засчитывается, если в нём есть настоящее слово от 4 букв: «супер!» подходит, а эмодзи, «ок», «ааааа» и набор букв нет. Повторы не считаются, за комментарии не больше 15 очков в день.</li>
       <li>Отметь друга в комментарии. Как только он сам оставит комментарий, ты сразу получишь +20. При ежедневной проверке подписок очки останутся, если друг подписался после отметки, иначе снимутся. Один друг даёт очки один раз и только тому, кто отметил его первым.</li>
-      <li>Отметка в сторис засчитывается раз в день.</li>
       <li>Очки навсегда привязаны к нику. Повторная подписка новых очков не даёт.</li>
       <li>Кто отписался, исчезает с орбиты через 10 дней. Вернёшься, и твои очки вернутся вместе с тобой.</li>
-      <li>Победителей челленджей выбирает @what_if.mir.</li>
+      <li>Иногда @what_if.mir дарит бонусные очки за конкурсы и челленджи.</li>
     </ul>
     <h3>Цвета · с уровня «Планета»</h3>
     <p>Каждому выпадает один из 16 777 216 цветов RGB и режим окраски. Цвет закреплён за ником.</p>
@@ -226,7 +225,7 @@ const LEVELS=[
  {name:'Газовый гигант',min:500,band:[940,1040],size:[34,42],d:'Легенда аккаунта'},
  {name:'Звезда',min:1000,band:[820,900],size:[28,33],d:'Звезда-компаньон, высшая лига'},
 ];
-const RULES=[['Подписка','+5'],['Месяц в подписке','+10'],['Комментарий хотя бы с одним словом от 4 букв','+3'],['Отметь друга в комментарии, и он подпишется','+20'],['Отметка в сторис, раз в день','+15'],['Ежедневный заход','+1'],['Победа в челлендже','+50']];
+const RULES=[['Подписка','+5'],['Каждый день в подписке','+1'],['Комментарий с настоящим словом, до 15 в день','+3'],['Отметь друга в комментарии, и он подпишется','+20']];
 const TILT=0.62, SUN_R=80;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -624,7 +623,7 @@ function parse(data){
   if(!Array.isArray(arr))throw new Error('В файле нет списка подписчиков');
   const now=Date.now()/1000,out=[],seen=new Set();
   for(const it of arr){let nick,points;
-    if(it&&it.string_list_data){const d=it.string_list_data[0]||{};nick=d.value;const months=d.timestamp?Math.max(0,(now-d.timestamp)/2629800):0;points=5+Math.floor(months)*10}
+    if(it&&it.string_list_data){const d=it.string_list_data[0]||{};nick=d.value;const months=d.timestamp?Math.max(0,(now-d.timestamp)/2629800):0;points=5+Math.floor(months*30.44)}
     else if(it&&(it.nick||it.username)){nick=it.nick||it.username;points=Math.max(0,Math.round(+it.points||0))}
     else if(typeof it==='string'){nick=it;points=5}
     if(nick&&!seen.has(nick)){seen.add(nick);const o={nick:String(nick).replace(/^@/,''),points};if(it&&it.leftAt)o.leftAt=String(it.leftAt);if(it&&it.activity)o.activity=it.activity;out.push(o)}}

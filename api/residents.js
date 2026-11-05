@@ -38,6 +38,9 @@ function realWord(w) {
 const meaningful = t => (t || '').split(/\s+/).some(realWord);
 const norm = t => (t || '').toLowerCase().replace(/@[\w.]+/g, '').replace(/[^\p{L}\p{N}]+/gu, '');
 const mentions = t => [...(t || '').matchAll(/@([A-Za-z0-9._]{1,30})/g)].map(m => m[1].replace(/\.$/, '').toLowerCase());
+// subscription: +5 on day one and +1 for every full day since; "bonus" is a manual award from the author (challenges)
+const SUB_START = 5, SUB_DAY = 1;
+const subPoints = s => (s.since ? SUB_START + Math.floor((Date.now() - s.since * 1000) / 864e5) * SUB_DAY : (s.points || 0)) + (s.bonus || 0);
 const day = ms => new Date(ms + TZ_OFFSET_MS).toISOString().slice(0, 10);
 
 async function collectComments(token, since) {
@@ -100,7 +103,7 @@ function score(data, comments) {
   }
   data.subscribers = (data.subscribers || []).map(s => {
     const u = s.nick.toLowerCase(), b = bonus.get(u) || 0, st = stat.get(u);
-    const o = { nick: s.nick, points: (s.points || 0) + b };
+    const o = { nick: s.nick, points: subPoints(s) + b };
     if (s.leftAt) o.leftAt = s.leftAt;
     if (st) o.activity = st;
     return o;
@@ -124,7 +127,8 @@ module.exports = async (req, res) => {
     console.error('instagram api:', e.message);
     info = { live: false, error: 'instagram api unavailable' };
   }
-  for (const s of data.subscribers || []) delete s.since;
+  if (!info.live) data.subscribers = (data.subscribers || []).map(s => { const o = { nick: s.nick, points: subPoints(s) }; if (s.leftAt) o.leftAt = s.leftAt; return o; });
+  for (const s of data.subscribers || []) { delete s.since; delete s.bonus; }
   data.updated = new Date().toISOString();
   data.info = info;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
