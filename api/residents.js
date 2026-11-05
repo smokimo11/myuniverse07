@@ -41,13 +41,13 @@ async function collectComments(token, since) {
   }
   const media = await all(`${API}/${igId || 'me'}/media?fields=id,timestamp&limit=50&access_token=${token}`);
   const list = [];
-  for (const m of media) {
-    if (Date.parse(m.timestamp) < since) continue;
-    const cs = await all(`${API}/${m.id}/comments?fields=id,text,timestamp,username,replies{id,text,timestamp,username}&limit=50&access_token=${token}`);
-    for (const c of cs) {
-      list.push(c);
-      for (const r of (c.replies && c.replies.data) || []) list.push(r);
-    }
+  // all videos at once, so the whole check fits well inside the function time limit
+  const per = await Promise.all(media.filter(m => Date.parse(m.timestamp) >= since).map(m =>
+    all(`${API}/${m.id}/comments?fields=id,text,timestamp,username,replies{id,text,timestamp,username}&limit=50&access_token=${token}`)
+      .catch(e => { console.error('comments', m.id, e.message); return []; })));
+  for (const cs of per) for (const c of cs) {
+    list.push(c);
+    for (const r of (c.replies && c.replies.data) || []) list.push(r);
   }
   return list.map(c => ({ u: (c.username || '').toLowerCase(), text: c.text || '', ts: Date.parse(c.timestamp) }))
              .filter(c => c.u && c.ts).sort((a, b) => a.ts - b.ts);
@@ -86,12 +86,14 @@ function score(data, comments) {
 }
 
 module.exports = async (req, res) => {
+  try {
   const data = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'residents.json'), 'utf8'));
   const token = process.env.IG_TOKEN;
   let info = { live: false };
   try {
     if (token && data.countFrom) {
-      const comments = await collectComments(token, Date.parse(data.countFrom));
+      const comments = await Promise.race([collectComments(token, Date.parse(data.countFrom)),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 25000))]);
       info = { live: true, ...score(data, comments) };
     }
   } catch (e) {
@@ -104,4 +106,9 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=3600');
   res.status(200).send(JSON.stringify(data));
+  } catch (e) {
+    console.error('residents:', e.message);
+    res.status(500).json({ error: 'failed' });
+  }
 };
+module.exports.config = { maxDuration: 30 };
