@@ -146,7 +146,9 @@ module.exports = async (req, res) => {
     info = { live: false, error: String(e.message || e).replace(/access_token=[^&\s]+/g, 'access_token=…').slice(0, 300) };
   }
   if (!info.live) data.subscribers = (data.subscribers || []).map(s => { const o = { nick: s.nick, points: subPoints(s) }; if (s.leftAt) o.leftAt = s.leftAt; return o; });
-  for (const s of data.subscribers || []) { delete s.since; delete s.bonus; }
+  // keep only the hour someone arrived (for the Big Bang replay on the site), not the exact moment
+  const hours = new Map((JSON.parse(fs.readFileSync(path.join(process.cwd(), 'residents.json'), 'utf8')).subscribers || []).filter(x => x.since).map(x => [String(x.nick).toLowerCase(), Math.floor(x.since / 3600)]));
+  for (const s of data.subscribers || []) { const h = hours.get(String(s.nick).toLowerCase()); if (h) s.b = h; delete s.since; delete s.bonus; }
   data.updated = new Date().toISOString();
   data.info = info;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
