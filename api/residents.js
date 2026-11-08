@@ -68,7 +68,8 @@ async function collectComments(token, since) {
              .filter(c => c.u && c.ts).sort((a, b) => a.ts - b.ts);
 }
 
-function score(data, comments) {
+function score(data, comments, trace) {
+  const traced = [];
   const acc = (data.account || '').toLowerCase();
   const subs = new Map((data.subscribers || []).map(s => [s.nick.toLowerCase(), s]));
   const bonus = new Map(), stat = new Map();
@@ -80,9 +81,12 @@ function score(data, comments) {
     if (c.u === acc) continue;
     // comment points: a meaningful comment (see realWord), no repeats of the same text by the same person, at most 15 points a day
     const key = c.u + '|' + norm(c.text), dk = c.u + '|' + day(c.ts);
-    if (meaningful(c.text) && norm(c.text) && !seenText.has(key) && (dayPts.get(dk) || 0) < COMMENT_DAY_CAP) {
-      seenText.add(key); dayPts.set(dk, (dayPts.get(dk) || 0) + COMMENT_PTS); add(c.u, 'comments', COMMENT_PTS);
-    }
+    let why = 'засчитан +3';
+    if (!meaningful(c.text) || !norm(c.text)) why = 'нет настоящего слова от 4 букв';
+    else if (seenText.has(key)) why = 'повтор';
+    else if ((dayPts.get(dk) || 0) >= COMMENT_DAY_CAP) why = 'лимит 15 в день';
+    else { seenText.add(key); dayPts.set(dk, (dayPts.get(dk) || 0) + COMMENT_PTS); add(c.u, 'comments', COMMENT_PTS); }
+    if (trace && c.u === trace) traced.push({ text: c.text, time: new Date(c.ts).toISOString(), day: day(c.ts), result: why });
     // friend points, first tagger wins, one friend counts once:
     //  confirmed - the friend is in the follower export and followed after this comment;
     //  pending   - the friend is not in the export yet, but commented after being tagged and no export
@@ -109,7 +113,9 @@ function score(data, comments) {
     return o;
   });
   let pend = 0, conf = 0; for (const v of stat.values()) { pend += v.pending / FRIEND_PTS; conf += v.friends / FRIEND_PTS; }
-  return { counted: comments.length, people: stat.size, invites: conf, pending: pend };
+  const r = { counted: comments.length, people: stat.size, invites: conf, pending: pend };
+  if (trace) r.check = { nick: trace, subscribed: subs.has(trace), comments: traced };
+  return r;
 }
 
 module.exports = async (req, res) => {
@@ -121,7 +127,8 @@ module.exports = async (req, res) => {
     if (token && data.countFrom) {
       const comments = await Promise.race([collectComments(token, Date.parse(data.countFrom)),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 25000))]);
-      info = { live: true, ...score(data, comments) };
+      const trace = (req.query && typeof req.query.check === 'string') ? req.query.check.toLowerCase().replace(/^@/, '').slice(0, 30) : '';
+      info = { live: true, ...score(data, comments, trace) };
     }
   } catch (e) {
     console.error('instagram api:', e.message);
