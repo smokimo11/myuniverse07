@@ -567,10 +567,10 @@ const goldDay=()=>Math.floor((Date.now()-GOLD_START)/864e5);
 const GOLD={gold:true,day:-1,r:0,a0:0,w:0,size:4,x:0,y:0,sx:0,sy:0,s:0,on:false};
 let GOLD_WIN=null;
 function placeGold(){const d=goldDay();GOLD.on=d>=0&&d<GOLD_DAYS;if(!GOLD.on)return;GOLD.day=d;const r=rng(0x60d+d*7919);
-  const outer=Math.max(maxR,1300);GOLD.r=outer*(.72+r()*.3);GOLD.a0=r()*TAU;GOLD.w=(r()<.5?-1:1)*(.004+r()*.004);GOLD.ph=r()*5}
+  const outer=Math.max(maxR,1300);GOLD.r=outer*(1.08+r()*.32);GOLD.a0=r()*TAU;GOLD.w=(r()<.5?-1:1)*(.004+r()*.004);GOLD.ph=r()*5}
 function drawGold(c,x,y,s,t){const tw=Math.max(0,Math.sin((t+GOLD.ph)*TAU/5.5))**24;
-  if(tw>.02){const R=s*(3+9*tw),g=c.createRadialGradient(x,y,0,x,y,R);g.addColorStop(0,`rgba(255,220,120,${.85*tw})`);g.addColorStop(1,'rgba(255,200,80,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,R,0,TAU);c.fill();
-    c.strokeStyle=`rgba(255,240,190,${tw})`;c.lineWidth=Math.max(1,s*.25);c.beginPath();c.moveTo(x-R*.8,y);c.lineTo(x+R*.8,y);c.moveTo(x,y-R*.8);c.lineTo(x,y+R*.8);c.stroke()}
+  if(tw>.02){const R=s*(1.6+3.2*tw),g=c.createRadialGradient(x,y,0,x,y,R);g.addColorStop(0,`rgba(255,220,120,${.55*tw})`);g.addColorStop(1,'rgba(255,200,80,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,R,0,TAU);c.fill();
+    c.strokeStyle=`rgba(255,240,190,${.7*tw})`;c.lineWidth=Math.max(.8,s*.14);c.beginPath();c.moveTo(x-R*.9,y);c.lineTo(x+R*.9,y);c.moveTo(x,y-R*.9);c.lineTo(x,y+R*.9);c.stroke()}
   c.beginPath();for(let i=0;i<7;i++){const a=i/7*TAU+.4,k=i%2?.75:1;c.lineTo(x+Math.cos(a)*s*k,y+Math.sin(a)*s*k)}c.closePath();
   const g2=c.createRadialGradient(x-s*.3,y-s*.3,0,x,y,s*1.1);g2.addColorStop(0,'#fff1b8');g2.addColorStop(.5,'#e8b23a');g2.addColorStop(1,'#7a5410');c.fillStyle=g2;c.fill()}
 async function openGold(){sel=GOLD;follow=GOLD;goal={z:clampZ(46/GOLD.size)};$('card').hidden=false;$('cBar').parentElement.hidden=true;if($('cTry'))$('cTry').hidden=true;if($('cShare'))$('cShare').hidden=true;
