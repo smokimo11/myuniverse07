@@ -208,6 +208,17 @@ pre{font-family:var(--f-mono);font-size:12px;background:var(--void);border:1px s
     <ul class="levels" id="levelList"></ul>
     <h3>За что даются очки</h3>
     <div class="rules" id="rules"></div>
+    <h3>Что есть во вселенной</h3>
+    <div class="rules">
+      <div>Чёрная дыра — сердце вселенной @what_if.mir</div><div>центр</div>
+      <div>12 титанов — гигантские планеты, их можно занять</div><div>ближняя орбита</div>
+      <div>Космостанция «Орбита» — новости вселенной</div><div>край</div>
+      <div>Червоточина — прыжок к случайной планете</div><div>край</div>
+      <div>Туманности — Колыбель, Янтарь, Бирюза и Шёпот</div><div>за краем</div>
+      <div>Метеоры — пролетают время от времени, в метеоритный дождь чаще</div><div>везде</div>
+      <div>Золотой астероид — каждый день в новом месте</div><div>где-то</div>
+      <div>И ещё кое-что очень большое. Отдались, чтобы найти</div><div>???</div>
+    </div>
     <h3>Честная игра</h3>
     <ul class="fair">
       <li>Комментарий засчитывается, если в нём есть настоящее слово от 4 букв: «супер!» подходит, а эмодзи, «ок», «ааааа» и набор букв нет. Повторы не считаются, за комментарии не больше 15 очков в день.</li>
@@ -274,7 +285,7 @@ function build(list){
       for(let k=0;k<n;k++){const o=grp[i+k];o.r=rad;o.w=w;o.a0=a0+(k+(o.ph-.5)*.25)/n*Math.PI*2}
       i+=n;ring++;L.band[1]=rad;if(i<grp.length)rad+=dr}
     rad+=dr/2+50;objects=objects.concat(grp)}
-  maxR=rad;placeGold();
+  maxR=rad;placeGold();placeWorld();
   /* smooth moves: people who were already here glide from where they were; newcomers drift in from just outside their slot */
   for(const o of objects){const p=prev.get(o.nick);if(p){o.rc=p.mv?p.rc:p.r;o.ac=p.mv?p.ac:p.a0+NOW*p.w}else{o.rc=first?650:o.r*1.12+120;o.ac=o.a0+NOW*o.w}o.mv=true}
   objects.sort((a,b)=>a.lvl-b.lvl);
@@ -566,7 +577,10 @@ function pick(px,py){let best=null,bd=1e9;
   if(GOLD.on&&GOLD.s>0&&Math.hypot(GOLD.sx-px,GOLD.sy-py)<Math.max(GOLD.s*2.2,9)){openGold();return}
   for(const a of ADS){const d=Math.hypot(a.sx-px,a.sy-py);if(d<Math.max(a.s*1.3,20)&&d-40<bd){bd=d-40;best=a}}
   for(const o of objects){const d=Math.hypot(o.sx-px,o.sy-py),lim=Math.max(o.s+8,16);if(d<lim&&d-o.lvl*3<bd){bd=d-o.lvl*3;best=o}}
-  if(best)flyTo(best);else select(null)}
+  if(best){flyTo(best);return}
+  if(Math.hypot(cx0()-px,cy0()-py)<Math.max(SUN_R*cam.z*1.1,14)){openWorld(HOLE);return}
+  const w=pickWorld(px,py);if(w){openWorld(w);return}
+  select(null)}
 function flyTo(o){select(o);follow=o;goal={z:clampZ(46/o.size)}}
 
 /* ---------- golden asteroid: a new hiding place every day (Moscow time), tiny and only twinkling now and then ---------- */
@@ -624,6 +638,78 @@ async function shareCard(o){const btn=$('cShare');btn.disabled=true;const old=bt
 const METEOR=new Set(['2026-11-13','2026-11-14','2026-11-15']);
 function showNews(){const n=$('news'),parts=[];if(METEOR.has(mskDay()))parts.push('☄️ Метеоритный дождь: сегодня до 30 очков за комментарии');
   if(GOLD.on)parts.push(GOLD_WIN?`✨ Золотой астероид сегодня нашёл @${GOLD_WIN}`:'✨ Где-то на орбите прячется золотой астероид');n.textContent=parts.join(' · ');n.hidden=!parts.length}
+/* ---------- deep space around the universe: station, wormhole, nebulae, meteors and colossal unknowns ----------
+   Everything here sits outside the residents' orbits and is placed relative to maxR, so it moves out as the universe grows. */
+const WORLD=[
+ {id:'station',kind:'station',name:'Космостанция «Орбита»',type:'станция',ang:-.62,rk:1.24,size:62,
+  text:'Дом смотрителей вселенной. Здесь собирают новости обо всех, кто живёт на орбите.'},
+ {id:'worm',kind:'worm',name:'Червоточина',type:'аномалия',ang:2.45,rk:1.32,size:80,
+  text:'Никто не знает, куда она ведёт. Иногда она выбрасывает путешественника прямо к чужой планете. Рискнёшь?'},
+ {id:'n1',kind:'neb',name:'Туманность Колыбель',type:'туманность',ang:-2.2,rk:1.75,size:760,hue:285,
+  text:'Здесь рождаются астероиды. Каждый новый подписчик прилетает во вселенную отсюда.'},
+ {id:'n2',kind:'neb',name:'Туманность Янтарь',type:'туманность',ang:3.25,rk:1.55,size:620,hue:38,
+  text:'Тёплая пыль цвета мёда. Говорят, золотой астероид любит прятаться где-то рядом с ней.'},
+ {id:'n3',kind:'neb',name:'Туманность Бирюза',type:'туманность',ang:.55,rk:1.9,size:880,hue:180,
+  text:'Холодное сияние на краю. В её свете кометы оставляют самые длинные хвосты.'},
+ {id:'n4',kind:'neb',name:'Туманность Шёпот',type:'туманность',ang:1.55,rk:2.25,size:980,hue:330,
+  text:'Если долго смотреть в её облака, кажется, что они складываются в ники тех, кто ушёл.'},
+ {id:'eye',kind:'eye',name:'Око Бездны',type:'неизвестно',ang:-1.45,rk:4.1,size:2600,
+  text:'Оно смотрит на вселенную с самого начала. Иногда моргает. Никто не знает, что оно видит.'},
+ {id:'attr',kind:'attr',name:'Великий Аттрактор',type:'неизвестно',ang:.2,rk:4.6,size:3000,
+  text:'Что-то огромное медленно тянет к себе все галактики. Наша вселенная тоже дрейфует к нему, на миллиметр в век.'},
+ {id:'mono',kind:'mono',name:'Монолит',type:'неизвестно',ang:2.75,rk:3.9,size:2200,
+  text:'Его нашли на самом краю. Он старше чёрной дыры, а символы на нём никто не может прочитать.'},
+ {id:'web',kind:'web',name:'Космическая паутина',type:'неизвестно',ang:4.3,rk:4.4,size:2800,
+  text:'Нити, на которых держатся вселенные. Где-то на одной из них висит и наша.'},
+];
+WORLD.forEach(o=>{o.world=true;o.x=0;o.y=0;o.sx=0;o.sy=0;o.s=0});
+function placeWorld(){const R=Math.max(maxR,1300);for(const o of WORLD){o.x=Math.cos(o.ang)*R*o.rk;o.y=Math.sin(o.ang)*R*o.rk*TILT}}
+const WEBN=(()=>{const r=rng(777),n=[];for(let i=0;i<26;i++)n.push([r()*2-1,r()*2-1]);return n})();
+function drawWorld(c,o,x,y,s,t,back){
+ switch(o.kind){
+ case 'neb':{if(!back)return;for(let i=0;i<5;i++){const a=i*1.3+t*.01,dx=Math.cos(a)*s*.35,dy=Math.sin(a*1.4)*s*.25,rr=s*(.55+.12*i);
+   const g=c.createRadialGradient(x+dx,y+dy,0,x+dx,y+dy,rr);g.addColorStop(0,`hsla(${o.hue+i*12},80%,62%,.10)`);g.addColorStop(1,`hsla(${o.hue+i*12},80%,50%,0)`);c.fillStyle=g;c.beginPath();c.arc(x+dx,y+dy,rr,0,TAU);c.fill()}
+   const r=rng(o.hue);c.fillStyle=`hsla(${o.hue},90%,85%,.5)`;for(let i=0;i<40;i++){const d=Math.max(.6,s*.004);c.fillRect(x+(r()-.5)*s*1.4,y+(r()-.5)*s,d,d)}break}
+ case 'eye':{if(!back)return;const blink=Math.pow(Math.abs(Math.sin(t*.05)),.12),h=s*.42*blink;c.lineWidth=Math.max(1,s*.006);
+   c.strokeStyle='rgba(190,170,255,.16)';c.beginPath();c.moveTo(x-s,y);c.quadraticCurveTo(x,y-h*2,x+s,y);c.quadraticCurveTo(x,y+h*2,x-s,y);c.stroke();
+   c.save();c.beginPath();c.moveTo(x-s,y);c.quadraticCurveTo(x,y-h*2,x+s,y);c.quadraticCurveTo(x,y+h*2,x-s,y);c.clip();
+   for(let i=1;i<=6;i++){c.strokeStyle=`rgba(${150+i*12},${120+i*10},255,${.06+i*.015})`;c.beginPath();c.arc(x,y,s*.07*i+s*.01*Math.sin(t*.3+i),0,TAU);c.stroke()}
+   c.fillStyle='rgba(0,0,0,.55)';c.beginPath();c.ellipse(x,y,s*.04,s*.18,0,0,TAU);c.fill();
+   const g=c.createRadialGradient(x,y,0,x,y,s*.5);g.addColorStop(0,'rgba(160,140,255,.10)');g.addColorStop(1,'rgba(160,140,255,0)');c.fillStyle=g;c.fillRect(x-s,y-s,s*2,s*2);c.restore();break}
+ case 'attr':{if(!back)return;c.lineWidth=Math.max(1,s*.004);for(let i=1;i<=9;i++){const rr=s*.1*i,sp=(i%2?1:-1)*t*.02/i;c.strokeStyle=`rgba(255,${170+i*8},${120+i*10},${.13-i*.009})`;
+   c.setLineDash([rr*.25,rr*.12]);c.beginPath();c.ellipse(x,y,rr,rr*.62,sp,0,TAU);c.stroke()}c.setLineDash([]);
+   const g=c.createRadialGradient(x,y,0,x,y,s*.25);g.addColorStop(0,'rgba(255,190,140,.14)');g.addColorStop(1,'rgba(255,190,140,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,s*.25,0,TAU);c.fill();break}
+ case 'mono':{if(!back)return;const w=s*.22,h=s*.95,g=c.createLinearGradient(x-w,y,x+w,y);g.addColorStop(0,'rgba(20,18,40,.55)');g.addColorStop(.5,'rgba(40,36,80,.45)');g.addColorStop(1,'rgba(20,18,40,.55)');
+   c.fillStyle=g;c.fillRect(x-w/2,y-h/2,w,h);c.strokeStyle=`rgba(170,160,255,${.18+.06*Math.sin(t*.4)})`;c.lineWidth=Math.max(1,s*.005);c.strokeRect(x-w/2,y-h/2,w,h);
+   c.fillStyle='rgba(190,180,255,.18)';const r=rng(5);for(let i=0;i<34;i++){const gx=x-w*.38+r()*w*.76,gy=y-h*.42+i*h*.025;c.fillRect(gx,gy,w*(.04+r()*.12),Math.max(1,s*.004))}break}
+ case 'web':{if(!back)return;const P=WEBN.map(([a,b])=>[x+a*s,y+b*s*.7]);c.lineWidth=Math.max(1,s*.003);
+   for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const d=Math.hypot(P[i][0]-P[j][0],P[i][1]-P[j][1]);if(d>s*.55)continue;c.strokeStyle=`rgba(140,200,255,${.11*(1-d/(s*.55))})`;c.beginPath();c.moveTo(P[i][0],P[i][1]);c.quadraticCurveTo((P[i][0]+P[j][0])/2+s*.05*Math.sin(t*.1+i),(P[i][1]+P[j][1])/2,P[j][0],P[j][1]);c.stroke()}
+   for(const p of P){const g=c.createRadialGradient(p[0],p[1],0,p[0],p[1],s*.05);g.addColorStop(0,'rgba(170,220,255,.22)');g.addColorStop(1,'rgba(170,220,255,0)');c.fillStyle=g;c.beginPath();c.arc(p[0],p[1],s*.05,0,TAU);c.fill()}break}
+ case 'station':{if(back)return;const rot=t*.15;c.save();c.translate(x,y);
+   const g=c.createRadialGradient(0,0,s*.2,0,0,s*1.6);g.addColorStop(0,'rgba(140,200,255,.18)');g.addColorStop(1,'rgba(140,200,255,0)');c.fillStyle=g;c.beginPath();c.arc(0,0,s*1.6,0,TAU);c.fill();
+   c.fillStyle='#2a3350';c.fillRect(-s*1.5,-s*.08,s*.7,s*.16);c.fillRect(s*.8,-s*.08,s*.7,s*.16);c.strokeStyle='#7fa6ff';c.lineWidth=Math.max(1,s*.02);
+   for(let i=0;i<6;i++){c.beginPath();c.moveTo(-s*1.5+i*s*.12,-s*.08);c.lineTo(-s*1.5+i*s*.12,s*.08);c.moveTo(s*.8+i*s*.12,-s*.08);c.lineTo(s*.8+i*s*.12,s*.08);c.stroke()}
+   c.scale(1,.55);c.rotate(rot);c.strokeStyle='#cfd8ff';c.lineWidth=Math.max(1.5,s*.12);c.beginPath();c.arc(0,0,s*.75,0,TAU);c.stroke();
+   c.lineWidth=Math.max(1,s*.04);for(let i=0;i<4;i++){const a=i*TAU/4;c.beginPath();c.moveTo(0,0);c.lineTo(Math.cos(a)*s*.75,Math.sin(a)*s*.75);c.stroke()}
+   for(let i=0;i<8;i++){const a=i*TAU/8,on=Math.sin(t*3+i)>.3;c.fillStyle=on?'#ffd36b':'#5a6080';c.beginPath();c.arc(Math.cos(a)*s*.75,Math.sin(a)*s*.75,Math.max(1,s*.05),0,TAU);c.fill()}
+   c.restore();c.fillStyle='#e6e9ff';c.beginPath();c.arc(x,y,s*.2,0,TAU);c.fill();c.fillStyle='#7fa6ff';c.beginPath();c.arc(x,y,s*.1,0,TAU);c.fill();break}
+ case 'worm':{if(back)return;const g=c.createRadialGradient(x,y,0,x,y,s*1.4);g.addColorStop(0,'rgba(0,0,0,.95)');g.addColorStop(.3,'rgba(80,30,140,.55)');g.addColorStop(1,'rgba(120,60,220,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,s*1.4,0,TAU);c.fill();
+   for(let k=0;k<3;k++)for(let i=0;i<70;i++){const q=i/70,a=q*TAU*2.2+k*TAU/3-t*.8,rr=s*(.15+q*1.1),d=Math.max(.8,s*.03*(1-q*.5));c.fillStyle=`hsla(${270+q*50},90%,${75-q*25}%,${.9*(1-q)})`;c.fillRect(x+Math.cos(a)*rr-d/2,y+Math.sin(a)*rr*.75-d/2,d,d)}
+   c.fillStyle='#000';c.beginPath();c.arc(x,y,s*.14,0,TAU);c.fill();break}
+ }}
+/* meteors: thin streaks across the screen now and then, a real shower on meteor days */
+const METEORS=[];let lastMeteor=0;
+function meteors(c,t,W,H,shower){if(t-lastMeteor>(shower?.5:7)*(.5+Math.random())){lastMeteor=t;const a=.55+Math.random()*.4;METEORS.push({x:Math.random()*W*1.2,y:-20,a,v:600+Math.random()*500,l:60+Math.random()*120,b:t})}
+ for(let i=METEORS.length-1;i>=0;i--){const m=METEORS[i],dt=t-m.b,px=m.x-Math.cos(a2(m))*m.v*dt,py=m.y+Math.sin(a2(m))*m.v*dt;if(dt>2.2||py>H+200){METEORS.splice(i,1);continue}
+   const al=Math.min(1,dt*4)*Math.max(0,1-dt/2.2),g=c.createLinearGradient(px,py,px+Math.cos(a2(m))*m.l,py-Math.sin(a2(m))*m.l);g.addColorStop(0,`rgba(255,250,235,${al})`);g.addColorStop(1,'rgba(255,250,235,0)');
+   c.strokeStyle=g;c.lineWidth=1.6;c.beginPath();c.moveTo(px,py);c.lineTo(px+Math.cos(a2(m))*m.l,py-Math.sin(a2(m))*m.l);c.stroke()}}
+const a2=m=>m.a;
+function pickWorld(px,py){let best=null,bd=1e9;for(const o of WORLD){const d=Math.hypot(o.sx-px,o.sy-py),lim=o.kind==='station'||o.kind==='worm'?Math.max(o.s*1.3,22):o.s*.45;if(d<lim&&d<bd){bd=d;best=o}}return best}
+function stationNews(){const L=LEVELS.map(()=>0);for(const o of objects)L[o.lvl]++;const top=objects.slice().sort((a,b)=>b.points-a.points).slice(0,3);const out=[];
+  out.push(`Жителей: <b>${objects.length.toLocaleString('ru-RU')}</b>`);out.push(`Комет: <b>${L[1]}</b> · Лун: <b>${L[2]}</b> · Планет: <b>${L[3]+L[4]+L[5]}</b> · Звёзд: <b>${L[6]}</b>`);
+  if(top.length)out.push('Лидеры: '+top.map(o=>`<b>@${o.nick.replace(/[<>&"]/g,'')}</b> ${o.points}`).join(', '));
+  out.push(GOLD_WIN?`Золотой астероид сегодня нашёл <b>@${GOLD_WIN}</b>`:'Золотой астероид сегодня ещё никто не нашёл');
+  if(typeof METEOR!=='undefined'&&METEOR.has(mskDay()))out.push('☄️ Сегодня метеоритный дождь: до 30 очков за комментарии');return out.map(s=>`<div>${s}</div>`).join('')}
 /* ---------- UI ---------- */
 const $=id=>document.getElementById(id);
 function select(o){sel=o;$('card').hidden=!o;if(!o){follow=null;return}
@@ -639,6 +725,16 @@ function select(o){sel=o;$('card').hidden=!o;if(!o){follow=null;return}
   else{$('cBar').style.width='100%';$('cNext').innerHTML='<b>Максимальный уровень.</b> Ты среди звёзд системы.'}
 }
 $('cClose').onclick=()=>select(null);
+const HOLE={hole:true,world:true,name:'Чёрная дыра',type:'сердце вселенной',x:0,y:0,size:SUN_R,text:'Вокруг неё вращается вся наша вселенная. Говорят, она помнит каждого, кто когда-то отписался.'};
+const cx0=()=>W/2-cam.x*cam.z,cy0=()=>H/2-cam.y*cam.z;
+function worldIcon(o,t){const c=$('cardIcon').getContext('2d');c.clearRect(0,0,104,104);if(o.hole){drawHole(52,52,16,t);return}
+  const s=o.kind==='station'?22:o.kind==='worm'?26:44;if(o.kind!=='station'&&o.kind!=='worm')drawWorld(c,o,52,52,s,t,true);else drawWorld(c,o,52,52,s,t,false)}
+function openWorld(o){sel=o;follow=o;const zt=o.hole?1.2:o.kind==='station'?2.2:o.kind==='worm'?1.8:220/o.size;goal={z:clampZ(zt)};
+  $('card').hidden=false;$('cBar').parentElement.hidden=true;$('cShare').hidden=true;if($('cTry'))$('cTry').hidden=true;
+  $('cNick').textContent=o.name;$('cLvl').textContent=o.type;$('cPts').textContent='';$('cNext').textContent=o.text;$('cMeta').innerHTML='';
+  if(o.kind==='station')$('cMeta').innerHTML=stationNews();
+  if(o.kind==='worm'){const b=document.createElement('button');b.type='button';b.className='share';b.textContent='Прыгнуть в червоточину';
+    b.onclick=()=>{const list=objects.filter(x=>!x.leftAt);if(!list.length)return;const target=list[Math.floor(Math.random()*list.length)];select(null);goal={z:.05};setTimeout(()=>flyTo(target),900)};$('cMeta').append(b)}}
 $('cShare').onclick=()=>{if(sel&&!sel.ad&&!sel.gold)shareCard(sel)};
 $('cardShareBtn').onclick=async()=>{try{await navigator.share({files:[cardFile],text:`Я во вселенной @${account}`})}catch(e){}};
 $('cardSaveBtn').onclick=()=>{const a=document.createElement('a');a.href=cardURL;a.download=cardFile.name;document.body.append(a);a.click();a.remove()};
@@ -730,10 +826,14 @@ function frame(now){
   neb.addColorStop(0,'rgba(90,60,160,.20)');neb.addColorStop(.5,'rgba(40,30,90,.10)');neb.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=neb;ctx.fillRect(0,0,W,H);
   for(const s of stars){const px=((s.x*W*1.3-cam.x*z*.03*s.d)%W+W)%W,py=((s.y*H*1.3-cam.y*z*.03*s.d)%H+H)%H;ctx.fillStyle=`rgba(220,225,255,${s.a})`;ctx.fillRect(px,py,s.d*1.4,s.d*1.4)}
   const sunX=cx-cam.x*z,sunY=cy-cam.y*z;
+  meteors(ctx,t,W,H,METEOR.has(mskDay()));
+  for(const o of WORLD){o.sx=cx+(o.x-cam.x)*z;o.sy=cy+(o.y-cam.y)*z;o.s=o.size*z;const m=o.s*(o.kind==='station'?1.7:1.5)+20;if(o.sx<-m||o.sx>W+m||o.sy<-m||o.sy>H+m||o.s<1)continue;drawWorld(ctx,o,o.sx,o.sy,o.s,t,true)}
   ctx.lineWidth=1;
   if(0)for(let i=1;i<LEVELS.length;i++){const r=(LEVELS[i].band[0]+LEVELS[i].band[1])/2*z;ctx.strokeStyle=`rgba(150,150,210,${i===6?.1:.07})`;ctx.beginPath();ctx.ellipse(sunX,sunY,r,r*TILT,0,0,7);ctx.stroke()}
   ctx.strokeStyle='rgba(220,225,255,.12)';ctx.setLineDash([3,7]);ctx.beginPath();ctx.ellipse(sunX,sunY,600*z,600*z*TILT,0,0,7);ctx.stroke();ctx.setLineDash([]);
   drawHole(sunX,sunY,Math.max(SUN_R*z,3),t);
+  for(const o of WORLD){if(o.kind!=='station'&&o.kind!=='worm')continue;const m=o.s*1.7+20;if(o.sx<-m||o.sx>W+m||o.sy<-m||o.sy>H+m||o.s<1.5)continue;drawWorld(ctx,o,o.sx,o.sy,o.s,t,false);
+    if(o.s>10){const f=Math.min(14,o.s*.3);ctx.font=`600 ${f}px "Golos Text",system-ui,sans-serif`;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='rgba(235,232,244,.8)';ctx.fillText(o.name,o.sx,o.sy+o.s*(o.kind==='worm'?1.2:.95)+4)}}
   for(const a of ADS){a.sx=cx+(a.x-cam.x)*z;a.sy=cy+(a.y-cam.y)*z;a.s=a.size*z;const m=a.s*3.5+10;if(a.sx<-m||a.sx>W+m||a.sy<-m||a.sy>H+m)continue;let lx=-a.x,ly=-a.y;const ln=Math.hypot(lx,ly)||1;drawAd(ctx,a,a.sx,a.sy,a.s,t,lx/ln,ly/ln)}
   const labels=[];if(doDots)prepDots();
   for(const o of objects){if(!doDots&&!o.mv&&o.size*z<2.2&&o.lvl<6&&o!==sel)continue;o.sx=cx+(o.x-cam.x)*z;o.sy=cy+(o.y-cam.y)*z;o.s=o.size*z;const m=o.s*(o.lvl===1?8:o.lvl===6?3.3:2.1)+4;
@@ -752,10 +852,11 @@ function frame(now){
   for(const o of labels){const f=Math.min(14,o.s*.5,3.2*o.s/(.56*o.nick.length));if(f<5)continue;
     ctx.font=`600 ${f}px "Golos Text",system-ui,sans-serif`;const ty=o.sy+o.s*1.2+2;ctx.lineWidth=f*.32;ctx.strokeStyle='rgba(6,7,13,.85)';ctx.strokeText(o.nick,o.sx,ty);
     ctx.fillStyle=o===sel?'#e6e9ff':'rgba(235,232,244,.9)';ctx.fillText(o.nick,o.sx,ty)}
-  if(sel){const R=Math.max(sel.s*(sel.lvl===4?2.3:1.6),12);ctx.strokeStyle='rgba(230,233,255,.9)';ctx.lineWidth=1.5;ctx.setLineDash([4,5]);ctx.lineDashOffset=-t*12;ctx.beginPath();ctx.arc(sel.sx,sel.sy,R,0,7);ctx.stroke();ctx.setLineDash([])}
+  if(sel&&!sel.world){const R=Math.max(sel.s*(sel.lvl===4?2.3:1.6),12);ctx.strokeStyle='rgba(230,233,255,.9)';ctx.lineWidth=1.5;ctx.setLineDash([4,5]);ctx.lineDashOffset=-t*12;ctx.beginPath();ctx.arc(sel.sx,sel.sy,R,0,7);ctx.stroke();ctx.setLineDash([])}
   {const R=SUN_R*z,f=Math.min(30,R*.8),ly=sunY+R*1.45;
   ctx.font=`600 ${f}px "Golos Text",system-ui,sans-serif`;ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=f*.5;ctx.fillStyle='rgba(240,242,255,.95)';ctx.fillText('@'+account,sunX,ly);ctx.shadowBlur=0}
-  if(sel&&!sel.ad&&!sel.gold&&sel.lvl>=3&&!$('card').hidden)drawCardIcon(sel);
+  if(sel&&!sel.ad&&!sel.gold&&!sel.world&&sel.lvl>=3&&!$('card').hidden)drawCardIcon(sel);
+  if(sel&&(sel.world||sel.hole)&&!$('card').hidden)worldIcon(sel,t);
   if(!$('levelsSheet').hidden)drawPreview(t);
   for(const h of frameHooks)h(t);
   requestAnimationFrame(frame)}
