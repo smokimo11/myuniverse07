@@ -625,8 +625,8 @@ const GOLD_START=Date.UTC(2026,10,7,21,0,0),GOLD_DAYS=500;
 const mskDay=()=>new Date(Date.now()+3*3600e3).toISOString().slice(0,10);
 const goldDay=()=>Math.floor((Date.now()-GOLD_START)/864e5);
 const GOLD={gold:true,day:-1,r:0,a0:0,w:0,size:2.2,x:0,y:0,sx:0,sy:0,s:0,on:false};
-let GOLD_WIN=null;
-function placeGold(){const d=goldDay();GOLD.on=d>=0&&d<GOLD_DAYS;if(!GOLD.on)return;GOLD.day=d;const r=rng(0x60d+d*7919);
+let GOLD_WIN=null,GOLD_WIN_DAY=null,GOLD_RES=null;
+function placeGold(){const d=goldDay();if(GOLD_WIN_DAY!==d){GOLD_WIN=null;GOLD_WIN_DAY=null}GOLD.on=d>=0&&d<GOLD_DAYS&&!GOLD_WIN;if(!GOLD.on)return;GOLD.day=d;const r=rng(0x60d+d*7919);
   const outer=Math.max(maxR,1300);GOLD.r=outer*(1.08+r()*.32);GOLD.a0=r()*TAU;GOLD.w=(r()<.5?-1:1)*(.004+r()*.004);GOLD.ph=r()*5}
 function drawGold(c,x,y,s,t){const tw=.7*Math.max(0,Math.sin((t+GOLD.ph)*TAU/9))**40;
   if(tw>.02){const R=s*(1.6+3.2*tw),g=c.createRadialGradient(x,y,0,x,y,R);g.addColorStop(0,`rgba(255,220,120,${.55*tw})`);g.addColorStop(1,'rgba(255,200,80,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,R,0,TAU);c.fill();
@@ -674,7 +674,7 @@ async function shareCard(o){const btn=$('cShare');btn.disabled=true;const old=bt
 
 const METEOR=new Set(['2026-11-13','2026-11-14','2026-11-15']);
 function showNews(){const n=$('news'),parts=[];if(METEOR.has(mskDay()))parts.push('☄️ Метеоритный дождь: сегодня до 30 очков за комментарии');
-  if(GOLD.on)parts.push(GOLD_WIN?`✨ Золотой астероид сегодня нашёл @${GOLD_WIN}`:'✨ Где-то на орбите прячется золотой астероид');n.textContent=parts.join(' · ');n.hidden=!parts.length}
+  if(GOLD.on||GOLD_WIN)parts.push(GOLD_WIN?`✨ Золотой астероид сегодня нашёл @${GOLD_WIN}`:'✨ Где-то на орбите прячется золотой астероид');n.textContent=parts.join(' · ');n.hidden=!parts.length}
 /* ---------- deep space around the universe: station, wormhole, nebulae, meteors and colossal unknowns ----------
    Everything here sits outside the residents' orbits and is placed relative to maxR, so it moves out as the universe grows. */
 const WORLD=[
@@ -863,7 +863,8 @@ function frame(now){
     o.x=Math.cos(a)*r;o.y=Math.sin(a)*r*TILT}
   lastMoving=moving;
   for(const o of ADS){const a=o.a0+t*o.w;o.x=Math.cos(a)*o.r;o.y=Math.sin(a)*o.r*TILT}
-  if(GOLD.on){if(fc%600===0&&goldDay()!==GOLD.day)placeGold();const a=GOLD.a0+t*GOLD.w;GOLD.x=Math.cos(a)*GOLD.r;GOLD.y=Math.sin(a)*GOLD.r*TILT}
+  if(fc%600===0&&goldDay()!==GOLD.day)placeGold();
+  if(GOLD.on){const a=GOLD.a0+t*GOLD.w;GOLD.x=Math.cos(a)*GOLD.r;GOLD.y=Math.sin(a)*GOLD.r*TILT}
   if(follow){goal=goal||{};goal.x=follow.x;goal.y=follow.y;if(goal.z==null)goal.z=cam.z}
   if(goal){if(goal.x==null)goal.x=cam.x;if(goal.y==null)goal.y=cam.y;if(goal.z==null)goal.z=cam.z;const k=reduce?1:.09;cam.x+=(goal.x-cam.x)*k;cam.y+=(goal.y-cam.y)*k;cam.z+=(goal.z-cam.z)*k;
     if(!follow&&Math.abs(goal.z-cam.z)<1e-4&&Math.abs(goal.x-cam.x)<.5)goal=null}
@@ -909,7 +910,14 @@ function frame(now){
   requestAnimationFrame(frame)}
 build([]);requestAnimationFrame(frame);
 /* the site reads residents.json from next to itself; without it the orbit simply starts empty */
-(async()=>{for(const u of ['api/residents','residents.json']){try{const r=await fetch(u,{cache:'no-store'});if(!r.ok)continue;const j=await r.json();GOLD_WIN=j.info&&j.info.goldenToday||null;DATA=parse(j);build(DATA);home();showNews();return}catch(e){}}})();
+(async()=>{for(const u of ['api/residents','residents.json']){try{const r=await fetch(u,{cache:'no-store'});if(!r.ok)continue;const j=await r.json();const gi=j.info||{};if(gi.goldenToday&&gi.goldenDay===goldDay()){GOLD_WIN=GOLD_RES=gi.goldenToday;GOLD_WIN_DAY=gi.goldenDay}DATA=parse(j);build(DATA);home();showNews();checkGold();setInterval(checkGold,300000);return}catch(e){}}})();
+/* the golden asteroid disappears once someone has written today's word; the +50 shows right away
+   (the full points recount on the server runs every few hours and already includes it then) */
+async function checkGold(){try{const r=await fetch('api/golden-status');if(!r.ok)return;const g=await r.json();
+  if(!g.winner||g.day!==goldDay()||GOLD_WIN_DAY===g.day&&GOLD_WIN===g.winner)return;
+  GOLD_WIN=g.winner;GOLD_WIN_DAY=g.day;GOLD.on=false;if(sel===GOLD){sel=null;follow=null;$('card').hidden=true}
+  if(GOLD_RES!==g.winner){const it=DATA.find(x=>String(x.nick).toLowerCase()===g.winner);if(it){it.points+=50;if(it.activity)it.activity.golden=(it.activity.golden||0)+50;GOLD_RES=g.winner;build(DATA)}}
+  showNews()}catch(e){}}
 })();
 </script>
 

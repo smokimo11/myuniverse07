@@ -124,7 +124,7 @@ function score(data, comments, trace) {
   });
   let pend = 0, conf = 0; for (const v of stat.values()) { pend += v.pending / FRIEND_PTS; conf += v.friends / FRIEND_PTS; }
   const today = dayIndex();
-  const r = { counted: comments.length, people: stat.size, invites: conf, pending: pend, goldenToday: goldenWon.get(today) || null, goldenWins: goldenWon.size };
+  const r = { counted: comments.length, people: stat.size, invites: conf, pending: pend, goldenToday: goldenWon.get(today) || null, goldenDay: today, goldenWins: goldenWon.size };
   if (trace) r.check = { nick: trace, subscribed: subs.has(trace), comments: traced };
   return r;
 }
@@ -158,3 +158,4 @@ module.exports = async (req, res) => {
   }
 };
 module.exports.config = { maxDuration: 30 };
+module.exports.collectComments = collectComments;
