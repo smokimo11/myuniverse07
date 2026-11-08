@@ -627,7 +627,12 @@ const goldDay=()=>Math.floor((Date.now()-GOLD_START)/864e5);
 const GOLD={gold:true,day:-1,r:0,a0:0,w:0,size:2.2,x:0,y:0,sx:0,sy:0,s:0,on:false};
 let GOLD_WIN=null,GOLD_WIN_DAY=null,GOLD_RES=null;
 function placeGold(){const d=goldDay();if(GOLD_WIN_DAY!==d){GOLD_WIN=null;GOLD_WIN_DAY=null}GOLD.on=d>=0&&d<GOLD_DAYS&&!GOLD_WIN;if(!GOLD.on)return;GOLD.day=d;const r=rng(0x60d+d*7919);
-  const outer=Math.max(maxR,1300);GOLD.r=outer*(1.08+r()*.32);GOLD.a0=r()*TAU;GOLD.w=(r()<.5?-1:1)*(.004+r()*.004);GOLD.ph=r()*5}
+  const outer=Math.max(maxR,1300);GOLD.r=outer*1.8;GOLD.a0=r()*TAU;GOLD.ph=r()*5;
+  /* it wanders: several slow swings on top of a gentle drift, so it keeps turning back and changing direction,
+     and it is driven by the clock, so everyone sees it in the same place at the same moment */
+  GOLD.drift=(r()<.5?-1:1)*(.0004+r()*.0004);
+  GOLD.sw=[[.9,700],[.45,260],[.1,110]].map(([A,P])=>[A*(.7+r()*.6),TAU/(P*(.8+r()*.4)),r()*TAU]);
+  GOLD.rad=[[.22,540],[.08,170]].map(([A,P])=>[A,TAU/(P*(.8+r()*.4)),r()*TAU])}
 function drawGold(c,x,y,s,t){const tw=.7*Math.max(0,Math.sin((t+GOLD.ph)*TAU/9))**40;
   if(tw>.02){const R=s*(1.6+3.2*tw),g=c.createRadialGradient(x,y,0,x,y,R);g.addColorStop(0,`rgba(255,220,120,${.55*tw})`);g.addColorStop(1,'rgba(255,200,80,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,R,0,TAU);c.fill();
     c.strokeStyle=`rgba(255,240,190,${.7*tw})`;c.lineWidth=Math.max(.8,s*.14);c.beginPath();c.moveTo(x-R*.9,y);c.lineTo(x+R*.9,y);c.moveTo(x,y-R*.9);c.lineTo(x,y+R*.9);c.stroke()}
@@ -864,7 +869,7 @@ function frame(now){
   lastMoving=moving;
   for(const o of ADS){const a=o.a0+t*o.w;o.x=Math.cos(a)*o.r;o.y=Math.sin(a)*o.r*TILT}
   if(fc%600===0&&goldDay()!==GOLD.day)placeGold();
-  if(GOLD.on){const a=GOLD.a0+t*GOLD.w;GOLD.x=Math.cos(a)*GOLD.r;GOLD.y=Math.sin(a)*GOLD.r*TILT}
+  if(GOLD.on){const T=(Date.now()-GOLD_START)/1000;let a=GOLD.a0+T*GOLD.drift,k=1;for(const[A,f,p]of GOLD.sw)a+=A*Math.sin(T*f+p);for(const[A,f,p]of GOLD.rad)k+=A*Math.sin(T*f+p);GOLD.x=Math.cos(a)*GOLD.r*k;GOLD.y=Math.sin(a)*GOLD.r*k*TILT}
   if(follow){goal=goal||{};goal.x=follow.x;goal.y=follow.y;if(goal.z==null)goal.z=cam.z}
   if(goal){if(goal.x==null)goal.x=cam.x;if(goal.y==null)goal.y=cam.y;if(goal.z==null)goal.z=cam.z;const k=reduce?1:.09;cam.x+=(goal.x-cam.x)*k;cam.y+=(goal.y-cam.y)*k;cam.z+=(goal.z-cam.z)*k;
     if(!follow&&Math.abs(goal.z-cam.z)<1e-4&&Math.abs(goal.x-cam.x)<.5)goal=null}
