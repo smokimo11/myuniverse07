@@ -132,7 +132,7 @@ module.exports = async (req, res) => {
   data.updated = new Date().toISOString();
   data.info = info;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, s-maxage=9000, stale-while-revalidate=3600');
+  res.setHeader('Cache-Control', 'public, s-maxage=21600, stale-while-revalidate=3600');
   res.status(200).send(JSON.stringify(data));
   } catch (e) {
     console.error('residents:', e.message);
