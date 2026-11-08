@@ -216,7 +216,7 @@ pre{font-family:var(--f-mono);font-size:12px;background:var(--void);border:1px s
       <div>12 титанов — гигантские планеты, их можно занять</div><div>ближняя орбита</div>
       <div>Космостанция «Орбита» — новости вселенной</div><div>край</div>
       <div>Червоточина — прыжок к случайной планете</div><div>край</div>
-      <div>Туманности — Колыбель, Янтарь, Бирюза и Шёпот</div><div>за краем</div>
+      <div>Туманности Колыбель и Янтарь, звёзды-близнецы</div><div>за краем</div>
       <div>Метеоры — пролетают время от времени, в метеоритный дождь чаще</div><div>везде</div>
       <div>Золотой астероид — каждый день в новом месте</div><div>где-то</div>
       <div>И ещё кое-что очень большое. Отдались, чтобы найти</div><div>???</div>
@@ -686,17 +686,13 @@ const WORLD=[
   text:'Здесь рождаются астероиды. Каждый новый подписчик прилетает во вселенную отсюда.'},
  {id:'n2',kind:'neb',name:'Туманность Янтарь',type:'туманность',ang:3.25,rk:1.55,size:620,hue:38,
   text:'Тёплая пыль цвета мёда. Говорят, золотой астероид любит прятаться где-то рядом с ней.'},
- {id:'n3',kind:'neb',name:'Туманность Бирюза',type:'туманность',ang:.55,rk:1.9,size:880,hue:180,
-  text:'Холодное сияние на краю. В её свете кометы оставляют самые длинные хвосты.'},
- {id:'n4',kind:'neb',name:'Туманность Шёпот',type:'туманность',ang:1.55,rk:2.25,size:980,hue:330,
-  text:'Если долго смотреть в её облака, кажется, что они складываются в ники тех, кто ушёл.'},
- {id:'eye',kind:'eye',name:'Око Бездны',type:'неизвестно',ang:-1.45,rk:4.1,size:2600,
+ {id:'bin',kind:'bin',name:'Звёзды-близнецы',type:'двойная звезда',ang:.75,rk:1.85,size:240,
+  text:'Две звезды кружат друг вокруг друга миллиард лет и перетягивают сияние: то одна ярче, то другая. Говорят, так выглядит настоящая дружба.'},
+ {id:'eye',kind:'eye',name:'Око Бездны',type:'неизвестно',ang:-1.55,rk:6.6,size:4400,
   text:'Оно смотрит на вселенную с самого начала. Иногда моргает. Никто не знает, что оно видит.'},
- {id:'attr',kind:'attr',name:'Великий Аттрактор',type:'неизвестно',ang:.2,rk:4.6,size:3000,
+ {id:'attr',kind:'attr',name:'Великий Аттрактор',type:'неизвестно',ang:.45,rk:7.8,size:5200,
   text:'Что-то огромное медленно тянет к себе все галактики. Наша вселенная тоже дрейфует к нему, на миллиметр в век.'},
- {id:'mono',kind:'mono',name:'Монолит',type:'неизвестно',ang:2.75,rk:3.9,size:2200,
-  text:'Его нашли на самом краю. Он старше чёрной дыры, а символы на нём никто не может прочитать.'},
- {id:'web',kind:'web',name:'Космическая паутина',type:'неизвестно',ang:4.3,rk:4.4,size:2800,
+ {id:'web',kind:'web',name:'Космическая паутина',type:'неизвестно',ang:2.6,rk:7.2,size:4800,
   text:'Нити, на которых держатся вселенные. Где-то на одной из них висит и наша.'},
 ];
 WORLD.forEach(o=>{o.world=true;o.x=0;o.y=0;o.sx=0;o.sy=0;o.s=0});
@@ -716,9 +712,15 @@ function drawWorld(c,o,x,y,s,t,back){
  case 'attr':{if(!back)return;c.lineWidth=Math.max(1,s*.004);for(let i=1;i<=9;i++){const rr=s*.1*i,sp=(i%2?1:-1)*t*.02/i;c.strokeStyle=`rgba(255,${170+i*8},${120+i*10},${.13-i*.009})`;
    c.setLineDash([rr*.25,rr*.12]);c.beginPath();c.ellipse(x,y,rr,rr*.62,sp,0,TAU);c.stroke()}c.setLineDash([]);
    const g=c.createRadialGradient(x,y,0,x,y,s*.25);g.addColorStop(0,'rgba(255,190,140,.14)');g.addColorStop(1,'rgba(255,190,140,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,s*.25,0,TAU);c.fill();break}
- case 'mono':{if(!back)return;const w=s*.22,h=s*.95,g=c.createLinearGradient(x-w,y,x+w,y);g.addColorStop(0,'rgba(20,18,40,.55)');g.addColorStop(.5,'rgba(40,36,80,.45)');g.addColorStop(1,'rgba(20,18,40,.55)');
-   c.fillStyle=g;c.fillRect(x-w/2,y-h/2,w,h);c.strokeStyle=`rgba(170,160,255,${.18+.06*Math.sin(t*.4)})`;c.lineWidth=Math.max(1,s*.005);c.strokeRect(x-w/2,y-h/2,w,h);
-   c.fillStyle='rgba(190,180,255,.18)';const r=rng(5);for(let i=0;i<34;i++){const gx=x-w*.38+r()*w*.76,gy=y-h*.42+i*h*.025;c.fillRect(gx,gy,w*(.04+r()*.12),Math.max(1,s*.004))}break}
+ case 'bin':{if(!back)return;const a=t*.35,d=s*.32,pulse=Math.sin(t*.7);
+   const g0=c.createRadialGradient(x,y,0,x,y,s*1.1);g0.addColorStop(0,'rgba(200,220,255,.10)');g0.addColorStop(1,'rgba(200,220,255,0)');c.fillStyle=g0;c.beginPath();c.arc(x,y,s*1.1,0,TAU);c.fill();
+   const A=[x+Math.cos(a)*d,y+Math.sin(a)*d*.55],B=[x-Math.cos(a)*d,y-Math.sin(a)*d*.55];
+   c.strokeStyle='rgba(200,215,255,.12)';c.lineWidth=Math.max(1,s*.005);c.beginPath();c.ellipse(x,y,d,d*.55,0,0,TAU);c.stroke();
+   for(let i=0;i<60;i++){const q=i/60,tw=Math.sin(q*Math.PI)*s*.12*Math.sin(t*1.3+q*6),px=A[0]+(B[0]-A[0])*q-Math.sin(a)*tw,py=A[1]+(B[1]-A[1])*q+Math.cos(a)*tw*.55,sz=Math.max(.7,s*.012*(1-Math.abs(q-.5)));
+     c.fillStyle=`hsla(${35+q*170},90%,75%,${.55*Math.sin(q*Math.PI)})`;c.fillRect(px-sz/2,py-sz/2,sz,sz)}
+   for(const [P,h,k] of [[A,35,1+.35*pulse],[B,205,1-.35*pulse]]){const r=s*.11*k,g=c.createRadialGradient(P[0],P[1],0,P[0],P[1],r*3.2);g.addColorStop(0,`hsla(${h},100%,92%,.95)`);g.addColorStop(.3,`hsla(${h},95%,70%,.45)`);g.addColorStop(1,`hsla(${h},95%,60%,0)`);
+     c.fillStyle=g;c.beginPath();c.arc(P[0],P[1],r*3.2,0,TAU);c.fill();c.fillStyle='#fffaf0';c.beginPath();c.arc(P[0],P[1],Math.max(1,r*.55),0,TAU);c.fill()}
+   break}
  case 'web':{if(!back)return;const P=WEBN.map(([a,b])=>[x+a*s,y+b*s*.7]);c.lineWidth=Math.max(1,s*.003);
    for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const d=Math.hypot(P[i][0]-P[j][0],P[i][1]-P[j][1]);if(d>s*.55)continue;c.strokeStyle=`rgba(140,200,255,${.11*(1-d/(s*.55))})`;c.beginPath();c.moveTo(P[i][0],P[i][1]);c.quadraticCurveTo((P[i][0]+P[j][0])/2+s*.05*Math.sin(t*.1+i),(P[i][1]+P[j][1])/2,P[j][0],P[j][1]);c.stroke()}
    for(const p of P){const g=c.createRadialGradient(p[0],p[1],0,p[0],p[1],s*.05);g.addColorStop(0,'rgba(170,220,255,.22)');g.addColorStop(1,'rgba(170,220,255,0)');c.fillStyle=g;c.beginPath();c.arc(p[0],p[1],s*.05,0,TAU);c.fill()}break}
