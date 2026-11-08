@@ -1,7 +1,7 @@
-// Daily golden asteroid codes. Day 0 (9 Nov 2026, Moscow time) is "туманность"; every later day is a space word
+// Daily golden asteroid codes. Day 0 (8 Nov 2026, Moscow time) is "туманность"; every later day is a space word
 // plus a number, derived from a server-side secret so the list cannot be read from the public code.
 const crypto = require('crypto');
-const START = Date.UTC(2026, 10, 8, 21, 0, 0); // 9 Nov 2026 00:00 Moscow
+const START = Date.UTC(2026, 10, 7, 21, 0, 0); // 8 Nov 2026 00:00 Moscow
 const DAYS = 500;
 const WORDS = ['квазар', 'пульсар', 'комета', 'орбита', 'нейтрон', 'галактика', 'затмение', 'метеор', 'протон', 'сверхновая',
   'астероид', 'гравитация', 'спутник', 'созвездие', 'горизонт', 'магнетар', 'фотон', 'плазма', 'кратер', 'полярис',

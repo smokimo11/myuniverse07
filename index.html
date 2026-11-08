@@ -561,7 +561,7 @@ function pick(px,py){let best=null,bd=1e9;
 function flyTo(o){select(o);follow=o;goal={z:clampZ(46/o.size)}}
 
 /* ---------- golden asteroid: a new hiding place every day (Moscow time), tiny and only twinkling now and then ---------- */
-const GOLD_START=Date.UTC(2026,10,8,21,0,0),GOLD_DAYS=500;
+const GOLD_START=Date.UTC(2026,10,7,21,0,0),GOLD_DAYS=500;
 const mskDay=()=>new Date(Date.now()+3*3600e3).toISOString().slice(0,10);
 const goldDay=()=>Math.floor((Date.now()-GOLD_START)/864e5);
 const GOLD={gold:true,day:-1,r:0,a0:0,w:0,size:4,x:0,y:0,sx:0,sy:0,s:0,on:false};
