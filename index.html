@@ -234,8 +234,8 @@ pre{font-family:var(--f-mono);font-size:12px;background:var(--void);border:1px s
     <h3>Цвета · с уровня «Планета»</h3>
     <p>Каждому выпадает один из 16 777 216 цветов RGB и режим окраски. Цвет закреплён за ником.</p>
     <div class="rules" id="colorRules"></div>
-    <h3>Эффекты · только у звёзд · 500</h3>
-    <p>Звезда получает один эффект из 500. Нажми на любой, чтобы посмотреть его вживую.</p>
+    <h3>Эффекты · только у звёзд · 504</h3>
+    <p>Звезда получает один эффект из 504. Нажми на любой, чтобы посмотреть его вживую.</p>
     <div class="fxprev"><canvas id="fxCanvas" width="240" height="240"></canvas><div><div class="n" id="fxName"></div><div class="d" id="fxInfo"></div></div></div>
     <div class="chipsf" id="fxChips"></div>
     <ul class="fxlist" id="fxList"></ul>
@@ -310,11 +310,11 @@ function demo(n=420){
 /* ---------- colours & effects ---------- */
 const TAU=Math.PI*2;
 const TIERS=[
- {name:'Обычный',color:'#a9b0c2',p:0.799999},
+ {name:'Обычный',color:'#a9b0c2',p:0.799995},
  {name:'Редкий',color:'#4aa8ff',p:0.165},
  {name:'Эпический',color:'#b874ff',p:0.03},
  {name:'Легендарный',color:'#ffb02e',p:0.005},
- {name:'Мифический',color:'#ff7ad9',p:0.000001},
+ {name:'Мифический',color:'#ff7ad9',p:0.000005},
 ];
 const CMODES=[{name:'Чистый',p:.85,tier:0},{name:'Двухтон',p:.12,tier:1},{name:'Металлик',p:.029,tier:2},{name:'Хрома',p:.001,tier:3}];
 const WHITE=[255,255,255],BLACK=[0,0,0];
@@ -400,6 +400,40 @@ const FAM=[
   const R=s*(1.4+k*.18+m)*p.k;c.lineTo(x+Math.cos(a)*R,y+Math.sin(a)*R*(.55+p.tl*.45))}c.stroke()}}},
 ];
 
+/* four more mythic effects, each drawn by hand and unlike any family above */
+const MYTH=[
+ {name:'Корона горизонта',draw(c,x,y,s,t,back){
+   if(back){const g=c.createRadialGradient(x,y,s*1.05,x,y,s*2.6);g.addColorStop(0,'rgba(0,0,0,.85)');g.addColorStop(.35,'rgba(255,170,80,.28)');g.addColorStop(.6,'rgba(120,60,255,.12)');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,s*2.6,0,TAU);c.fill();
+     // lensed light: thin arcs bent around the star, sliding round
+     for(let i=0;i<5;i++){const a=t*(.35+i*.08)+i*1.26,r=s*(1.35+i*.16);c.strokeStyle=`rgba(255,${200-i*20},${140+i*20},${.75-i*.12})`;c.lineWidth=Math.max(1,s*(.09-i*.012));c.beginPath();c.arc(x,y,r,a,a+1.9-i*.2);c.stroke()}return}
+   c.strokeStyle='rgba(255,236,200,.95)';c.lineWidth=Math.max(1,s*.07);c.beginPath();c.ellipse(x,y,s*1.95,s*.32,-.18,Math.PI*.05,Math.PI*.95);c.stroke();
+   c.fillStyle='#000';c.beginPath();c.arc(x,y,s*1.02,0,TAU);c.fill();c.strokeStyle='rgba(255,220,170,.9)';c.lineWidth=Math.max(1,s*.05);c.beginPath();c.arc(x,y,s*1.04,0,TAU);c.stroke()}},
+ {name:'Крылья Феникса',draw(c,x,y,s,t,back){
+   const flap=Math.sin(t*2.2),lift=.35+.25*flap;
+   if(back){for(const side of[-1,1])for(let f=0;f<9;f++){const k=f/8,a=-Math.PI/2+side*(.35+k*1.25)+side*lift*.4*(1-k),L=s*(2.1+2.4*Math.sin(k*Math.PI*.9));
+       const ex=x+Math.cos(a)*L,ey=y+Math.sin(a)*L*.85+s*.2,g=c.createLinearGradient(x,y,ex,ey);g.addColorStop(0,'rgba(255,240,180,.9)');g.addColorStop(.5,`rgba(255,${150-f*8},40,.75)`);g.addColorStop(1,'rgba(200,30,20,0)');
+       c.strokeStyle=g;c.lineWidth=Math.max(1,s*(.3-k*.15));c.beginPath();c.moveTo(x+side*s*.3,y);c.quadraticCurveTo(x+side*s*.9,y-s*.9*lift,ex,ey);c.stroke()}return}
+   for(let i=0;i<14;i++){const q=((t*.7+i/14)%1),px=x+Math.sin(i*2.1+t)*s*.6,py=y+s*.9-q*s*2.6;c.fillStyle=`rgba(255,${190-q*120},60,${(1-q)*.9})`;c.beginPath();c.arc(px,py,Math.max(.8,s*.07*(1-q)),0,TAU);c.fill()}}},
+ {name:'Часы Хроноса',draw(c,x,y,s,t,back){
+   const R=s*1.75;
+   if(back){const g=c.createRadialGradient(x,y,s,x,y,R*1.15);g.addColorStop(0,'rgba(255,215,130,.18)');g.addColorStop(1,'rgba(255,215,130,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,R*1.15,0,TAU);c.fill();
+     c.strokeStyle='rgba(255,220,150,.75)';c.lineWidth=Math.max(1,s*.05);c.beginPath();c.arc(x,y,R,0,TAU);c.stroke();
+     for(let i=0;i<12;i++){const a=i/12*TAU,l=i%3?.1:.22;c.lineWidth=Math.max(1,s*(i%3?.04:.08));c.beginPath();c.moveTo(x+Math.cos(a)*R*(1-l),y+Math.sin(a)*R*(1-l));c.lineTo(x+Math.cos(a)*R,y+Math.sin(a)*R);c.stroke()}
+     // a slow gear turning behind the dial
+     c.strokeStyle='rgba(255,200,120,.35)';c.lineWidth=Math.max(1,s*.04);c.beginPath();for(let i=0;i<=48;i++){const a=i/48*TAU-t*.15,r=R*(i%4<2?1.28:1.2);c.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r)}c.stroke();return}
+   const hand=(a,l,w,col)=>{c.strokeStyle=col;c.lineWidth=Math.max(1,s*w);c.beginPath();c.moveTo(x,y);c.lineTo(x+Math.cos(a)*R*l,y+Math.sin(a)*R*l);c.stroke()};
+   hand(t*.25-Math.PI/2,.6,.1,'rgba(255,236,190,.95)');hand(t*1.6-Math.PI/2,.92,.05,'rgba(255,210,120,.95)');hand(t*9-Math.PI/2,.98,.02,'rgba(255,120,90,.9)');
+   c.fillStyle='#ffe2a0';c.beginPath();c.arc(x,y,Math.max(1.5,s*.12),0,TAU);c.fill()}},
+ {name:'Мультивселенная',draw(c,x,y,s,t,back){
+   if(back){// echoes of the star falling inward forever
+     for(let i=0;i<6;i++){const q=((t*.25+i/6)%1),r=s*(3.2-q*2.2);c.strokeStyle=`hsla(${200+i*25},90%,70%,${.5*q})`;c.lineWidth=Math.max(1,s*.04);c.beginPath();c.arc(x,y,r,0,TAU);c.stroke()}return}
+   const W2=[[.0,1.0,190],[1.05,.55,300],[-.9,.75,40]];
+   W2.forEach(([tilt,sp,h],i)=>{const a=t*sp+i*2,rx=s*(1.9+i*.35),ry=rx*.32,cs=Math.cos(tilt),sn=Math.sin(tilt),ox=Math.cos(a)*rx,oy=Math.sin(a)*ry,px=x+ox*cs-oy*sn,py=y+ox*sn+oy*cs,pr=s*(.32-i*.04);
+     c.strokeStyle=`hsla(${h},80%,70%,.35)`;c.lineWidth=Math.max(1,s*.025);c.beginPath();c.ellipse(x,y,rx,ry,tilt,0,TAU);c.stroke();
+     const g=c.createRadialGradient(px-pr*.3,py-pr*.3,0,px,py,pr);g.addColorStop(0,`hsl(${h},90%,85%)`);g.addColorStop(1,`hsl(${h+20},70%,35%)`);c.fillStyle=g;c.beginPath();c.arc(px,py,pr,0,TAU);c.fill();
+     c.strokeStyle=`hsla(${h},90%,85%,.8)`;c.lineWidth=Math.max(1,pr*.12);c.beginPath();c.ellipse(px,py,pr*1.7,pr*.45,-.3+i,0,TAU);c.stroke()})}},
+];
+
 const FX=[];
 (()=>{
   const CN=['Рассвет','Шёпот','Иней','Эхо','Туман','Прилив','Полдень','Сумрак','Бриз','Роса','Мерцание','Отлив','Штиль'];
@@ -414,7 +448,8 @@ const FX=[];
   for(let i=0;i<50;i++){const a=(i*7)%20;let b=(i*11+3)%20;if(b===a)b=(b+1)%20;FX.push({name:`${EA[i%10]} ${EN[Math.floor(i/10)]}`,tier:2,fams:[a,b],p:P(2000+i,1.25,i%24,i%2,1)})}
   for(let i=0;i<49;i++){const a=(i*3)%20;let b=(i*7+5)%20,c=(i*13+11)%20;if(b===a)b=(b+1)%20;while(c===a||c===b)c=(c+1)%20;FX.push({name:LN[i],tier:3,fams:[a,b,c],p:P(3000+i,1.4,(i*5)%24,1,1)})}
   FX.push({name:'Сингулярность',tier:4,fams:[0,5,11,14,17,2],p:P(4000,1.5,6,1,1)});
-  const cnt=[250,150,50,49,1];FX.forEach((e,i)=>{e.id=i;e.chance=TIERS[e.tier].p/cnt[e.tier]});
+  MYTH.forEach((m,i)=>FX.push({name:m.name,tier:4,fams:[],custom:m.draw,p:P(4100+i,1.5,i,1,1)}));
+  const cnt=[250,150,50,49,5];FX.forEach((e,i)=>{e.id=i;e.chance=TIERS[e.tier].p/cnt[e.tier]});
 })();
 const BY_TIER=TIERS.map((_,i)=>FX.filter(e=>e.tier===i));
 function h32(s){let h=hash(s);h^=h>>>16;h=Math.imul(h,0x85ebca6b);h^=h>>>13;h=Math.imul(h,0xc2b2ae35);h^=h>>>16;return h>>>0}
@@ -426,7 +461,7 @@ function roll(nick){
   const c1=h32('rgb|'+nick),c2=h32('rgb2|'+nick);
   return{fx,cm,rgb:[c1>>>16&255,c1>>>8&255,c1&255],rgb2:[c2>>>16&255,c2>>>8&255,c2&255]}}
 function fxCols(e,o,t){const A=baseCol(o);switch(e.tier){case 4:return[hslA(t*80,.9,.65),hslA(t*80+180,.9,.65)];case 3:return[A,mixc([255,214,120],A,.25)];default:{const q=e.p.pal,B=q===0?mixc(A,WHITE,.5):q===1?comp(A):q===2?[A[1],A[2],A[0]]:[A[2],A[0],A[1]];return[A,e.tier===2?mixc(B,WHITE,.2):B]}}}
-function drawFx(c,e,o,x,y,s,t,lx,ly,back){if(!e)return;const [A,B]=fxCols(e,o,t);c.save();c.lineCap='round';for(const f of e.fams){const F=FAM[f];if(!!F.back!==!!back)continue;F.f(c,x,y,s,t,A,B,e.p,lx,ly)}c.restore()}
+function drawFx(c,e,o,x,y,s,t,lx,ly,back){if(!e)return;if(e.custom){c.save();c.lineCap='round';e.custom(c,x,y,s,t,back);c.restore();return}const [A,B]=fxCols(e,o,t);c.save();c.lineCap='round';for(const f of e.fams){const F=FAM[f];if(!!F.back!==!!back)continue;F.f(c,x,y,s,t,A,B,e.p,lx,ly)}c.restore()}
 
 /* ---------- drawing ---------- */
 
@@ -783,7 +818,7 @@ const PREV={lvl:6,rgb:[255,170,90],rgb2:[90,170,255],cm:0,ph:.2,seed:.3};
 function drawPreview(t){const c=$('fxCanvas').getContext('2d');c.clearRect(0,0,240,240);drawFx(c,fxPrev,PREV,120,120,34,t,.7,-.7,1);drawBody(c,PREV,120,120,34,.7,-.7);drawFx(c,fxPrev,PREV,120,120,34,t,.7,-.7,0)}
 function setPrev(){const T=TIERS[fxPrev.tier];$('fxName').textContent=fxPrev.name;$('fxInfo').innerHTML=`<span style="color:${T.color}">${T.name}</span> · шанс ${pct(fxPrev.chance)}<br>${fxPrev.fams.map(f=>FAM[f].name).join(' + ')}`}
 function renderFx(){const cnt=new Map();for(const o of objects)if(o.lvl===6)cnt.set(o.fx.id,(cnt.get(o.fx.id)||0)+1);
-  const ch=$('fxChips');ch.innerHTML='';[[4,'Мифический'],[3,'Легендарные · 49'],[2,'Эпические · 50'],[1,'Редкие · 150'],[0,'Обычные · 250'],[-1,'Все 500']].forEach(([v,l])=>{const b=document.createElement('button');b.type='button';b.className='chipf'+(v===fxFilter?' on':'');b.textContent=l;if(v>=0)b.style.color=TIERS[v].color;b.onclick=()=>{fxFilter=v;renderFx()};ch.append(b)});
+  const ch=$('fxChips');ch.innerHTML='';[[4,'Мифические · 5'],[3,'Легендарные · 49'],[2,'Эпические · 50'],[1,'Редкие · 150'],[0,'Обычные · 250'],[-1,'Все 504']].forEach(([v,l])=>{const b=document.createElement('button');b.type='button';b.className='chipf'+(v===fxFilter?' on':'');b.textContent=l;if(v>=0)b.style.color=TIERS[v].color;b.onclick=()=>{fxFilter=v;renderFx()};ch.append(b)});
   const ul=$('fxList');ul.innerHTML='';const list=fxFilter<0?FX.slice().reverse():BY_TIER[fxFilter];
   for(const e of list){const li=document.createElement('li');if(e===fxPrev)li.className='on';li.innerHTML='<div><div class="n"></div><div class="d"></div></div><div class="t"></div>';
     li.querySelector('.n').textContent=e.name;li.querySelector('.d').innerHTML=`<span style="color:${TIERS[e.tier].color}">${TIERS[e.tier].name}</span>`;
