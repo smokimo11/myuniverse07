@@ -108,6 +108,10 @@ textarea#jsonOut{width:100%;height:120px;margin-top:10px;background:var(--void);
 .fair{margin:0;padding:0 0 0 18px;display:flex;flex-direction:column;gap:7px;font-size:13.5px;line-height:1.45;color:var(--muted);max-width:62ch}
 .fair li::marker{color:var(--sun)}
 .sheet p b{color:var(--fg);font-weight:600}
+.share{grid-column:1/-1;margin-top:12px;background:var(--sun);color:#0b0c18;font-weight:600;font-size:14px;padding:10px 14px;border-radius:10px;justify-self:stretch}
+.share:disabled{opacity:.6}
+.gword{font-family:var(--f-mono);color:#ffd36b;font-size:15px;letter-spacing:.04em}
+.news{display:block;margin-top:3px;color:#ffd36b}
 .prog small b{color:var(--fg);font-weight:600}
 
 .sheet-wrap{position:fixed;inset:0;background:rgba(3,3,8,.6);display:flex;align-items:flex-end;justify-content:center;z-index:20}
@@ -150,6 +154,7 @@ pre{font-family:var(--f-mono);font-size:12px;background:var(--void);border:1px s
   <div class="brand panel">
     <h1 id="title">@what_if.mir</h1>
     <p>Жителей: <b id="count">0</b> · обновление каждый день </p>
+    <p class="news" id="news" hidden></p>
   </div>
   <div class="actions">
     <button class="chip panel" id="openLevels">Уровни</button>
@@ -176,6 +181,7 @@ pre{font-family:var(--f-mono);font-size:12px;background:var(--void);border:1px s
       <small id="cNext"></small>
     </div>
     <div class="meta" id="cMeta"></div>
+    <button class="share" id="cShare" type="button" hidden>Поделиться карточкой</button>
   </div>
   <form class="search panel" id="searchForm" autocomplete="off">
     <div class="sugg panel" id="sugg" hidden></div>
@@ -199,6 +205,8 @@ pre{font-family:var(--f-mono);font-size:12px;background:var(--void);border:1px s
       <li>Отметь друга в комментарии. Как только он сам оставит комментарий, ты сразу получишь +20. При ежедневной проверке подписок очки останутся, если друг подписался после отметки, иначе снимутся. Один друг даёт очки один раз и только тому, кто отметил его первым.</li>
       <li>Очки навсегда привязаны к нику. Повторная подписка новых очков не даёт.</li>
       <li>Кто отписался, исчезает с орбиты через 10 дней. Вернёшься, и твои очки вернутся вместе с тобой.</li>
+      <li>Каждый день на орбите прячется золотой астероид с секретным словом. Первый, кто напишет слово дня в комментариях под любым роликом, получает +50. Выигрывать можно каждый день.</li>
+      <li>Метеоритный дождь 13–15 ноября: за комментарии до 30 очков в день.</li>
       <li>Иногда @what_if.mir дарит бонусные очки за конкурсы и челленджи.</li>
     </ul>
     <h3>Цвета · с уровня «Планета»</h3>
@@ -225,7 +233,7 @@ const LEVELS=[
  {name:'Газовый гигант',min:500,band:[940,1040],size:[34,42],d:'Легенда аккаунта'},
  {name:'Звезда',min:1000,band:[820,900],size:[28,33],d:'Звезда-компаньон, высшая лига'},
 ];
-const RULES=[['Подписка','+5'],['Каждый день в подписке','+1'],['Комментарий с настоящим словом, до 15 в день','+3'],['Отметь друга в комментарии, и он подпишется','+20']];
+const RULES=[['Подписка','+5'],['Каждый день в подписке','+1'],['Комментарий с настоящим словом, до 15 в день','+3'],['Отметь друга в комментарии, и он подпишется','+20'],['Найди золотой астероид и первым напиши его слово в комментариях','+50']];
 const TILT=0.62, SUN_R=80;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -257,7 +265,7 @@ function build(list){
       for(let k=0;k<n;k++){const o=grp[i+k];o.r=rad;o.w=w;o.a0=a0+(k+(o.ph-.5)*.25)/n*Math.PI*2}
       i+=n;ring++;L.band[1]=rad;if(i<grp.length)rad+=dr}
     rad+=dr/2+50;objects=objects.concat(grp)}
-  maxR=rad;
+  maxR=rad;placeGold();
   /* smooth moves: people who were already here glide from where they were; newcomers drift in from just outside their slot */
   for(const o of objects){const p=prev.get(o.nick);if(p){o.rc=p.mv?p.rc:p.r;o.ac=p.mv?p.ac:p.a0+NOW*p.w}else{o.rc=first?650:o.r*1.12+120;o.ac=o.a0+NOW*o.w}o.mv=true}
   objects.sort((a,b)=>a.lvl-b.lvl);
@@ -546,15 +554,66 @@ function up(e){ptrs.delete(e.pointerId);if(!ptrs.size){cv.classList.remove('drag
 cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
 
 function pick(px,py){let best=null,bd=1e9;
+  if(GOLD.on&&GOLD.s>0&&Math.hypot(GOLD.sx-px,GOLD.sy-py)<Math.max(GOLD.s*2.5,14)){openGold();return}
   for(const a of ADS){const d=Math.hypot(a.sx-px,a.sy-py);if(d<Math.max(a.s*1.3,20)&&d-40<bd){bd=d-40;best=a}}
   for(const o of objects){const d=Math.hypot(o.sx-px,o.sy-py),lim=Math.max(o.s+8,16);if(d<lim&&d-o.lvl*3<bd){bd=d-o.lvl*3;best=o}}
   if(best)flyTo(best);else select(null)}
 function flyTo(o){select(o);follow=o;goal={z:clampZ(46/o.size)}}
 
+/* ---------- golden asteroid: a new hiding place every day (Moscow time), tiny and only twinkling now and then ---------- */
+const GOLD_START=Date.UTC(2026,10,8,21,0,0),GOLD_DAYS=500;
+const mskDay=()=>new Date(Date.now()+3*3600e3).toISOString().slice(0,10);
+const goldDay=()=>Math.floor((Date.now()-GOLD_START)/864e5);
+const GOLD={gold:true,day:-1,r:0,a0:0,w:0,size:4,x:0,y:0,sx:0,sy:0,s:0,on:false};
+let GOLD_WIN=null;
+function placeGold(){const d=goldDay();GOLD.on=d>=0&&d<GOLD_DAYS;if(!GOLD.on)return;GOLD.day=d;const r=rng(0x60d+d*7919);
+  const outer=Math.max(maxR,1300);GOLD.r=outer*(.72+r()*.3);GOLD.a0=r()*TAU;GOLD.w=(r()<.5?-1:1)*(.004+r()*.004);GOLD.ph=r()*5}
+function drawGold(c,x,y,s,t){const tw=Math.max(0,Math.sin((t+GOLD.ph)*TAU/5.5))**24;
+  if(tw>.02){const R=s*(3+9*tw),g=c.createRadialGradient(x,y,0,x,y,R);g.addColorStop(0,`rgba(255,220,120,${.85*tw})`);g.addColorStop(1,'rgba(255,200,80,0)');c.fillStyle=g;c.beginPath();c.arc(x,y,R,0,TAU);c.fill();
+    c.strokeStyle=`rgba(255,240,190,${tw})`;c.lineWidth=Math.max(1,s*.25);c.beginPath();c.moveTo(x-R*.8,y);c.lineTo(x+R*.8,y);c.moveTo(x,y-R*.8);c.lineTo(x,y+R*.8);c.stroke()}
+  c.beginPath();for(let i=0;i<7;i++){const a=i/7*TAU+.4,k=i%2?.75:1;c.lineTo(x+Math.cos(a)*s*k,y+Math.sin(a)*s*k)}c.closePath();
+  const g2=c.createRadialGradient(x-s*.3,y-s*.3,0,x,y,s*1.1);g2.addColorStop(0,'#fff1b8');g2.addColorStop(.5,'#e8b23a');g2.addColorStop(1,'#7a5410');c.fillStyle=g2;c.fill()}
+async function openGold(){sel=GOLD;follow=GOLD;goal={z:clampZ(46/GOLD.size)};$('card').hidden=false;$('cBar').parentElement.hidden=true;if($('cTry'))$('cTry').hidden=true;if($('cShare'))$('cShare').hidden=true;
+  $('cNick').textContent='Золотой астероид';$('cLvl').textContent='Находка дня';$('cPts').textContent='+50 очк.';$('cMeta').innerHTML='';
+  const c=$('cardIcon').getContext('2d');c.clearRect(0,0,104,104);drawGold(c,52,52,16,1.37);
+  $('cNext').innerHTML='Открываю…';
+  try{const r=await fetch('api/golden',{cache:'no-store'});const j=await r.json();if(!j.code)throw 0;
+    $('cNext').innerHTML=`Секретное слово дня: <b class="gword"></b><br>Первый, кто напишет его в комментариях под любым роликом, получит <b>+50</b>.`+(GOLD_WIN?`<br>Сегодня уже нашёл <b>@${GOLD_WIN}</b>, завтра будет новое.`:'');
+    $('cNext').querySelector('.gword').textContent=j.code}
+  catch(e){$('cNext').textContent='Не получилось открыть астероид, попробуй ещё раз.'}}
+/* ---------- "Моя планета": a story-sized card of your object to share ---------- */
+async function makeCard(o){try{await document.fonts.ready}catch(e){}
+  const W2=1080,H2=1920,cv2=document.createElement('canvas');cv2.width=W2;cv2.height=H2;const c=cv2.getContext('2d');
+  c.fillStyle='#06070d';c.fillRect(0,0,W2,H2);
+  let g=c.createRadialGradient(540,860,0,540,860,1100);g.addColorStop(0,'rgba(110,80,190,.35)');g.addColorStop(.6,'rgba(40,30,90,.15)');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.fillRect(0,0,W2,H2);
+  const r=rng(hash(o.nick));for(let i=0;i<260;i++){c.fillStyle=`rgba(220,225,255,${.2+r()*.6})`;const d=1+r()*2.4;c.fillRect(r()*W2,r()*H2,d,d)}
+  c.textAlign='center';c.textBaseline='alphabetic';
+  c.fillStyle='rgba(235,232,244,.75)';c.font='600 44px "Golos Text",system-ui,sans-serif';c.fillText('Я во вселенной',540,250);
+  c.fillStyle='#ffffff';c.font='700 66px "Tektur","Russo One",system-ui,sans-serif';c.fillText('@'+account,540,335);
+  const s=o.lvl===6?120:o.lvl===4?150:o.lvl===1?70:o.lvl===0?150:190,cx2=o.lvl===1?600:540,cy2=o.lvl===1?820:860;
+  if(o.lvl===6)drawFx(c,o.fx,o,540,860,s,NOW,.7,-.7,1);drawBody(c,o,cx2,cy2,s,.7,-.7);if(o.lvl===6)drawFx(c,o.fx,o,540,860,s,NOW,.7,-.7,0);
+  c.fillStyle='#ffffff';let fs=84;c.font=`700 ${fs}px "Golos Text",system-ui,sans-serif`;while(c.measureText('@'+o.nick).width>960&&fs>40){fs-=4;c.font=`700 ${fs}px "Golos Text",system-ui,sans-serif`}c.fillText('@'+o.nick,540,1290);
+  c.fillStyle='#e6e9ff';c.font='700 52px "Tektur","Russo One",system-ui,sans-serif';c.fillText(LEVELS[o.lvl].name.toUpperCase(),540,1380);
+  c.fillStyle='rgba(235,232,244,.8)';c.font='500 44px "Golos Text",system-ui,sans-serif';c.fillText(o.points.toLocaleString('ru-RU')+' очков',540,1450);
+  const nx=LEVELS[o.lvl+1];if(nx){const cur=LEVELS[o.lvl].min,p=Math.max(0,Math.min(1,(o.points-cur)/(nx.min-cur)));
+    c.fillStyle='rgba(255,255,255,.12)';c.beginPath();c.roundRect(190,1500,700,18,9);c.fill();const gg=c.createLinearGradient(190,0,890,0);gg.addColorStop(0,'#7d6cff');gg.addColorStop(1,'#e6e9ff');c.fillStyle=gg;c.beginPath();c.roundRect(190,1500,Math.max(18,700*p),18,9);c.fill();
+    c.fillStyle='rgba(235,232,244,.7)';c.font='500 36px "Golos Text",system-ui,sans-serif';c.fillText(`до «${nx.name}» ещё ${nx.min-o.points}`,540,1575)}
+  c.fillStyle='#ffffff';c.font='700 46px "Golos Text",system-ui,sans-serif';c.fillText('Найди себя',540,1740);
+  c.fillStyle='rgba(235,232,244,.75)';c.font='500 38px "Golos Text",system-ui,sans-serif';c.fillText(location.host||'ссылка в шапке @'+account,540,1800);
+  return new Promise(res=>cv2.toBlob(res,'image/png'))}
+async function shareCard(o){const btn=$('cShare');btn.disabled=true;const old=btn.textContent;btn.textContent='Рисую карточку…';
+  try{const blob=await makeCard(o),file=new File([blob],`planeta-${o.nick}.png`,{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],text:`Я во вселенной @${account}`})}catch(e){}}
+    else{const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}}
+  catch(e){btn.textContent='Не получилось, попробуй ещё раз';await new Promise(r=>setTimeout(r,1800))}btn.disabled=false;btn.textContent=old}
+
+const METEOR=new Set(['2026-11-13','2026-11-14','2026-11-15']);
+function showNews(){const n=$('news'),parts=[];if(METEOR.has(mskDay()))parts.push('☄️ Метеоритный дождь: сегодня до 30 очков за комментарии');
+  if(GOLD.on)parts.push(GOLD_WIN?`✨ Золотой астероид сегодня нашёл @${GOLD_WIN}`:'✨ Где-то на орбите прячется золотой астероид');n.textContent=parts.join(' · ');n.hidden=!parts.length}
 /* ---------- UI ---------- */
 const $=id=>document.getElementById(id);
 function select(o){sel=o;$('card').hidden=!o;if(!o){follow=null;return}
-  const bar=$('cBar').parentElement;bar.hidden=!!o.ad;if($('cTry'))$('cTry').hidden=!o.ad;$('cMeta').innerHTML='';
+  const bar=$('cBar').parentElement;bar.hidden=!!o.ad;$('cShare').hidden=!!o.ad;if($('cTry'))$('cTry').hidden=!o.ad;$('cMeta').innerHTML='';
   if(o.ad){$('cNick').textContent=o.brand||('Титан №'+o.slot);$('cLvl').textContent='Титан · '+o.name;$('cPts').textContent=o.brand?'занято':'свободно';
     const c=$('cardIcon').getContext('2d');c.clearRect(0,0,104,104);drawAd(c,o,52,52,22,performance.now()/1000,-.7,.7);
     $('cNext').innerHTML=o.brand?'Партнёр нашей вселенной.':'Чтобы занять титана, пиши в директ <b>@'+account+'</b>';return}
@@ -566,6 +625,7 @@ function select(o){sel=o;$('card').hidden=!o;if(!o){follow=null;return}
   else{$('cBar').style.width='100%';$('cNext').innerHTML='<b>Максимальный уровень.</b> Ты среди звёзд системы.'}
 }
 $('cClose').onclick=()=>select(null);
+$('cShare').onclick=()=>{if(sel&&!sel.ad&&!sel.gold)shareCard(sel)};
 
 const q=$('q'),sugg=$('sugg');
 function matches(v){v=v.trim().replace(/^@/,'').toLowerCase();if(!v)return[];const pre=[],inc=[];
@@ -588,7 +648,7 @@ function renderLevels(){const counts=LEVELS.map(()=>0);objects.forEach(o=>counts
 }
 const hex=A=>'#'+A.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
 function metaHTML(o){let h='';
-  if(o.activity){const a=o.activity,p=[];if(a.comments)p.push(`комментарии <b>+${a.comments}</b>`);if(a.friends)p.push(`друзья <b>+${a.friends}</b>`);if(a.pending)p.push(`друзья <b>+${a.pending}</b> (ждут проверки подписки)`);if(p.length)h+=`<div>За активность: ${p.join(' · ')}</div>`}
+  if(o.activity){const a=o.activity,p=[];if(a.comments)p.push(`комментарии <b>+${a.comments}</b>`);if(a.friends)p.push(`друзья <b>+${a.friends}</b>`);if(a.pending)p.push(`друзья <b>+${a.pending}</b> (ждут проверки подписки)`);if(a.golden)p.push(`золотые астероиды <b>+${a.golden}</b>`);if(p.length)h+=`<div>За активность: ${p.join(' · ')}</div>`}
   if(o.leftAt){const d=Math.max(0,LEAVE_DAYS-Math.floor((Date.now()-Date.parse(o.leftAt))/864e5));h+=`<div class="lock">Отписался · исчезнет с орбиты через ${d} дн., если не вернётся</div>`}
   if(o.lvl>=3){const m=CMODES[o.cm];h+=`<div><i class="sw" style="background:${hex(o.rgb)}"></i>Цвет <b>${hex(o.rgb)}</b> · <span style="color:${TIERS[m.tier].color}">${m.name}</span> · ${pct(m.p)}</div>`}
   else h+=`<div class="lock">Цвет откроется на уровне «${LEVELS[3].name}»</div>`;
@@ -644,6 +704,7 @@ function frame(now){
     o.x=Math.cos(a)*r;o.y=Math.sin(a)*r*TILT}
   lastMoving=moving;
   for(const o of ADS){const a=o.a0+t*o.w;o.x=Math.cos(a)*o.r;o.y=Math.sin(a)*o.r*TILT}
+  if(GOLD.on){if(fc%600===0&&goldDay()!==GOLD.day)placeGold();const a=GOLD.a0+t*GOLD.w;GOLD.x=Math.cos(a)*GOLD.r;GOLD.y=Math.sin(a)*GOLD.r*TILT}
   if(follow){goal=goal||{};goal.x=follow.x;goal.y=follow.y;if(goal.z==null)goal.z=cam.z}
   if(goal){const k=reduce?1:.09;cam.x+=(goal.x-cam.x)*k;cam.y+=(goal.y-cam.y)*k;cam.z+=(goal.z-cam.z)*k;
     if(!follow&&Math.abs(goal.z-cam.z)<1e-4&&Math.abs(goal.x-cam.x)<.5)goal=null}
@@ -668,6 +729,7 @@ function frame(now){
     drawBody(ctx,o,o.sx,o.sy,o.s,lx,ly);
     if(fxOn)drawFx(ctx,o.fx,o,o.sx,o.sy,o.s,t,lx,ly,0);
     if(o.s>=10&&labels.length<400)labels.push(o)}
+  if(GOLD.on){GOLD.sx=cx+(GOLD.x-cam.x)*z;GOLD.sy=cy+(GOLD.y-cam.y)*z;GOLD.s=GOLD.size*z;if(GOLD.sx>-60&&GOLD.sx<W+60&&GOLD.sy>-60&&GOLD.sy<H+60&&GOLD.s>.6)drawGold(ctx,GOLD.sx,GOLD.sy,Math.max(GOLD.s,1.2),t)}
   flushDots(doDots);pcam.x=cam.x;pcam.y=cam.y;pcam.z=cam.z;
   ctx.textAlign='center';ctx.textBaseline='top';ctx.lineJoin='round';
   /* nick under each object, sized to the object and to the free slot beside it, so it never runs into a neighbour */
@@ -677,13 +739,13 @@ function frame(now){
   if(sel){const R=Math.max(sel.s*(sel.lvl===4?2.3:1.6),12);ctx.strokeStyle='rgba(230,233,255,.9)';ctx.lineWidth=1.5;ctx.setLineDash([4,5]);ctx.lineDashOffset=-t*12;ctx.beginPath();ctx.arc(sel.sx,sel.sy,R,0,7);ctx.stroke();ctx.setLineDash([])}
   {const R=SUN_R*z,f=Math.min(30,R*.8),ly=sunY+R*1.45;
   ctx.font=`600 ${f}px "Golos Text",system-ui,sans-serif`;ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=f*.5;ctx.fillStyle='rgba(240,242,255,.95)';ctx.fillText('@'+account,sunX,ly);ctx.shadowBlur=0}
-  if(sel&&!sel.ad&&sel.lvl>=3&&!$('card').hidden)drawCardIcon(sel);
+  if(sel&&!sel.ad&&!sel.gold&&sel.lvl>=3&&!$('card').hidden)drawCardIcon(sel);
   if(!$('levelsSheet').hidden)drawPreview(t);
   for(const h of frameHooks)h(t);
   requestAnimationFrame(frame)}
 build([]);requestAnimationFrame(frame);
 /* the site reads residents.json from next to itself; without it the orbit simply starts empty */
-(async()=>{for(const u of ['api/residents','residents.json']){try{const r=await fetch(u,{cache:'no-store'});if(!r.ok)continue;DATA=parse(await r.json());build(DATA);home();return}catch(e){}}})();
+(async()=>{for(const u of ['api/residents','residents.json']){try{const r=await fetch(u,{cache:'no-store'});if(!r.ok)continue;const j=await r.json();GOLD_WIN=j.info&&j.info.goldenToday||null;DATA=parse(j);build(DATA);home();showNews();return}catch(e){}}})();
 })();
 </script>
 

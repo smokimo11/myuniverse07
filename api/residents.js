@@ -2,12 +2,14 @@
 // read once in a while from the official Instagram API and cached by Vercel.
 // The token lives only in the Vercel environment variable IG_TOKEN and never leaves the server.
 const fs = require('fs');
+const { dayIndex, codeFor, normCode } = require('./_golden');
 const path = require('path');
 
 // Two kinds of keys work: a system user token from the business portfolio (needs IG_USER_ID, graph.facebook.com)
 // or an Instagram login token (graph.instagram.com, /me).
 const VER = 'v26.0';
-const COMMENT_PTS = 3, COMMENT_DAY_CAP = 15, FRIEND_PTS = 20, MIN_LETTERS = 4;
+const COMMENT_PTS = 3, COMMENT_DAY_CAP = 15, GOLDEN_PTS = 50,
+  METEOR_DAYS = new Set(['2026-11-13', '2026-11-14', '2026-11-15']), METEOR_CAP = 30, FRIEND_PTS = 20, MIN_LETTERS = 4;
 const TZ_OFFSET_MS = 3 * 3600e3; // days are counted by Moscow time
 
 async function get(url) {
@@ -73,8 +75,8 @@ function score(data, comments, trace) {
   const acc = (data.account || '').toLowerCase();
   const subs = new Map((data.subscribers || []).map(s => [s.nick.toLowerCase(), s]));
   const bonus = new Map(), stat = new Map();
-  const add = (u, k, v) => { bonus.set(u, (bonus.get(u) || 0) + v); const s = stat.get(u) || { comments: 0, friends: 0, pending: 0 }; s[k] += v; stat.set(u, s); };
-  const seenText = new Set(), dayPts = new Map(), invited = new Set();
+  const add = (u, k, v) => { bonus.set(u, (bonus.get(u) || 0) + v); const s = stat.get(u) || { comments: 0, friends: 0, pending: 0, golden: 0 }; s[k] += v; stat.set(u, s); };
+  const seenText = new Set(), dayPts = new Map(), invited = new Set(), goldenWon = new Map();
   // the newest follow time in the export tells how fresh the export is
   const exportedAt = Math.max(0, ...(data.subscribers || []).map(s => (s.since || 0) * 1000));
   for (const c of comments) {
@@ -84,9 +86,17 @@ function score(data, comments, trace) {
     let why = 'засчитан +3';
     if (!meaningful(c.text) || !norm(c.text)) why = 'нет настоящего слова от 4 букв';
     else if (seenText.has(key)) why = 'повтор';
-    else if ((dayPts.get(dk) || 0) >= COMMENT_DAY_CAP) why = 'лимит 15 в день';
+    else if ((dayPts.get(dk) || 0) >= (METEOR_DAYS.has(day(c.ts)) ? METEOR_CAP : COMMENT_DAY_CAP)) why = METEOR_DAYS.has(day(c.ts)) ? 'лимит 30 в день (метеоритный дождь)' : 'лимит 15 в день';
     else { seenText.add(key); dayPts.set(dk, (dayPts.get(dk) || 0) + COMMENT_PTS); add(c.u, 'comments', COMMENT_PTS); }
     if (trace && c.u === trace) traced.push({ text: c.text, time: new Date(c.ts).toISOString(), day: day(c.ts), result: why });
+    // golden asteroid: the first subscriber to write the day's code under any video that same day gets +50
+    if (subs.has(c.u)) {
+      const d = dayIndex(c.ts), code = codeFor(d);
+      if (code && !goldenWon.has(d) && normCode(c.text).includes(normCode(code))) {
+        goldenWon.set(d, c.u); add(c.u, 'golden', GOLDEN_PTS);
+        if (trace && c.u === trace) traced.push({ text: c.text, time: new Date(c.ts).toISOString(), day: day(c.ts), result: 'золотой астероид +50' });
+      }
+    }
     // friend points, first tagger wins, one friend counts once:
     //  confirmed - the friend is in the follower export and followed after this comment;
     //  pending   - the friend is not in the export yet, but commented after being tagged and no export
@@ -113,7 +123,8 @@ function score(data, comments, trace) {
     return o;
   });
   let pend = 0, conf = 0; for (const v of stat.values()) { pend += v.pending / FRIEND_PTS; conf += v.friends / FRIEND_PTS; }
-  const r = { counted: comments.length, people: stat.size, invites: conf, pending: pend };
+  const today = dayIndex();
+  const r = { counted: comments.length, people: stat.size, invites: conf, pending: pend, goldenToday: goldenWon.get(today) || null, goldenWins: goldenWon.size };
   if (trace) r.check = { nick: trace, subscribed: subs.has(trace), comments: traced };
   return r;
 }
