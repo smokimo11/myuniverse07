@@ -77,6 +77,8 @@ function score(data, comments, trace) {
   const bonus = new Map(), stat = new Map();
   const add = (u, k, v) => { bonus.set(u, (bonus.get(u) || 0) + v); const s = stat.get(u) || { comments: 0, friends: 0, pending: 0, golden: 0 }; s[k] += v; stat.set(u, s); };
   const seenText = new Set(), dayPts = new Map(), invited = new Set(), goldenWon = new Map();
+  // golden asteroid wins written into residents.json stay won, even if the comment later disappears from Instagram
+  for (const [d, u] of Object.entries(data.golden || {})) { const n = String(u).toLowerCase().replace(/^@/, ''); goldenWon.set(+d, n); if (subs.has(n)) add(n, 'golden', GOLDEN_PTS); }
   // the newest follow time in the export tells how fresh the export is
   const exportedAt = Math.max(0, ...(data.subscribers || []).map(s => (s.since || 0) * 1000));
   for (const c of comments) {
