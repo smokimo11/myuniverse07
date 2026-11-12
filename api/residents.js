@@ -3,6 +3,7 @@
 // The token lives only in the Vercel environment variable IG_TOKEN and never leaves the server.
 const fs = require('fs');
 const { dayIndex, codeFor, normCode } = require('./_golden');
+const WHALE = require('./_whale');
 const path = require('path');
 
 // Two kinds of keys work: a system user token from the business portfolio (needs IG_USER_ID, graph.facebook.com)
@@ -75,8 +76,8 @@ function score(data, comments, trace) {
   const acc = (data.account || '').toLowerCase();
   const subs = new Map((data.subscribers || []).map(s => [s.nick.toLowerCase(), s]));
   const bonus = new Map(), stat = new Map();
-  const add = (u, k, v) => { bonus.set(u, (bonus.get(u) || 0) + v); const s = stat.get(u) || { comments: 0, friends: 0, pending: 0, golden: 0 }; s[k] += v; stat.set(u, s); };
-  const seenText = new Set(), dayPts = new Map(), invited = new Set(), goldenWon = new Map();
+  const add = (u, k, v) => { bonus.set(u, (bonus.get(u) || 0) + v); const s = stat.get(u) || { comments: 0, friends: 0, pending: 0, golden: 0, whale: 0 }; s[k] += v; stat.set(u, s); };
+  const seenText = new Set(), dayPts = new Map(), invited = new Set(), goldenWon = new Map(), whaleSeen = new Set(), whaleFirst = new Set();
   // golden asteroid wins written into residents.json stay won, even if the comment later disappears from Instagram
   for (const [d, u] of Object.entries(data.golden || {})) { const n = String(u).toLowerCase().replace(/^@/, ''); goldenWon.set(+d, n); if (subs.has(n)) add(n, 'golden', GOLDEN_PTS); }
   // the newest follow time in the export tells how fresh the export is
@@ -97,6 +98,16 @@ function score(data, comments, trace) {
       if (code && !goldenWon.has(d) && normCode(c.text).includes(normCode(code))) {
         goldenWon.set(d, c.u); add(c.u, 'golden', GOLDEN_PTS);
         if (trace && c.u === trace) traced.push({ text: c.text, time: new Date(c.ts).toISOString(), day: day(c.ts), result: 'золотой астероид +50' });
+      }
+    }
+    // cosmic whale: its word written within an hour of the swim gives +30 to everyone, +100 to the first for a golden whale
+    if (subs.has(c.u)) {
+      for (const w of WHALE.nearby(c.ts)) {
+        if (c.ts < w.start || c.ts > w.start + WHALE.CLAIM || !normCode(c.text).includes(normCode(w.word))) continue;
+        const key = w.id + '|' + c.u; if (whaleSeen.has(key)) continue; whaleSeen.add(key);
+        const first = w.golden && !whaleFirst.has(w.id); if (first) whaleFirst.add(w.id);
+        const pts = first ? WHALE.GOLD_PTS : WHALE.PTS; add(c.u, 'whale', pts);
+        if (trace && c.u === trace) traced.push({ text: c.text, time: new Date(c.ts).toISOString(), day: day(c.ts), result: (w.golden ? 'золотой кит +' : 'космический кит +') + pts });
       }
     }
     // friend points, first tagger wins, one friend counts once:
